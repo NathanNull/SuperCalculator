@@ -1,0 +1,1 @@
+.cast_into::<Rational>()
