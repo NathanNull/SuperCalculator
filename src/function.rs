@@ -40,16 +40,6 @@ impl<TEntry: Ring> Function<TEntry> {
 
             Self::Sum(lhs, rhs) | Self::Product(lhs, rhs) => {
                 let (lv, rv) = (lhs.eval(vars), rhs.eval(vars));
-                println!("Inspecting {lv:?}, {rv:?}");
-                match (&lv, &rv) {
-                    (Res(lhs), Res(rhs)) => {
-                        println!(
-                            "{:?}",
-                            rhs.is_const_product() == Some(FunctionPath::Left) && lhs.is_constant()
-                        );
-                    },
-                    _ => {}
-                }
 
                 match (lv, rv) {
                     (Res(Self::Constant(lhs_val)), Res(Self::Constant(rhs_val))) => match self {
@@ -90,7 +80,6 @@ impl<TEntry: Ring> Function<TEntry> {
                             }
                         }
                         Self::Product(_, _) => {
-                            println!("Entered product");
                             // Multiplicative identity
                             if lhs == Self::Constant(TEntry::multiplicative_ident()) {
                                 rhs
@@ -117,7 +106,6 @@ impl<TEntry: Ring> Function<TEntry> {
                             } else if rhs.is_const_product() == Some(FunctionPath::Left)
                                 && lhs.is_constant()
                             {
-                                println!("Entered function");
                                 match rhs {
                                     Self::Product(a, b) => Self::Product(
                                         Box::new(Self::Constant(
@@ -176,6 +164,19 @@ impl<TEntry: Ring> Function<TEntry> {
         match self {
             Self::Sum(a, b) if a.is_constant() || b.is_constant() => true,
             _ => false,
+        }
+    }
+
+    pub fn variables(&self) -> Vec<String> {
+        match self {
+            Function::Constant(_) => vec![],
+            Function::Variable(v) => vec![v.to_string()],
+            Function::Sum(l, r) | Function::Product(l, r) => l
+                .variables()
+                .into_iter()
+                .chain(r.variables().into_iter())
+                .collect(),
+            Function::Inverse(v) => v.variables(),
         }
     }
 

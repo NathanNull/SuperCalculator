@@ -1,3 +1,7 @@
+use std::array;
+
+use rand::rngs::ThreadRng;
+
 use crate::{
     augmented_matrix::AugmentedMatrix,
     ring_field::{Field, Ring},
@@ -50,7 +54,15 @@ impl<TEntry: Ring, const R: usize, const C: usize> std::fmt::Debug for Matrix<TE
 }
 
 #[allow(unused)]
-type Vector<TEntry, const N: usize> = Matrix<TEntry, N, 1>;
+pub type Vector<TEntry, const N: usize> = Matrix<TEntry, N, 1>;
+impl<TEntry: Ring, const N: usize> Vector<TEntry, N> {
+    pub fn v_new(entries: [TEntry; N]) -> Self {
+        Self {
+            entries: entries.map(|r|[r])
+        }
+    }
+}
+
 type SquareMatrix<TEntry, const N: usize> = Matrix<TEntry, N, N>;
 impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
     #[allow(unused)]
@@ -92,6 +104,12 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
 
     fn multiplicative_ident() -> Self {
         Self::ident()
+    }
+
+    fn generate(rng: &mut ThreadRng) -> Self {
+        Self::new(array::from_fn(|_| {
+            array::from_fn(|_| TEntry::generate(rng))
+        }))
     }
 }
 

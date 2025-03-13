@@ -36,7 +36,7 @@ impl<const R: usize, const M: usize, const C: usize, TEntry: Ring> Mul<Matrix<TE
             entries: array::from_fn(|r| {
                 array::from_fn(|c| {
                     (0..M)
-                        .map(|i| self.entries[i][c].clone() * rhs.entries[r][i].clone())
+                        .map(|i| self.entries[r][i].clone() * rhs.entries[i][c].clone())
                         .reduce(|acc, v| acc + v)
                         .unwrap()
                 })

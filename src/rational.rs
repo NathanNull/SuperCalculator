@@ -3,6 +3,8 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
+use rand::Rng;
+
 use crate::ring_field::{Ring, TrueDiv};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -177,6 +179,10 @@ impl Ring for Rational {
             num: 1,
             den: 1,
         }
+    }
+    
+    fn generate(rng: &mut rand::prelude::ThreadRng) -> Self {
+        Self::new(rng.random_bool(0.5), rng.random::<u8>() as u64, rng.random::<u8>() as u64)
     }
 }
 

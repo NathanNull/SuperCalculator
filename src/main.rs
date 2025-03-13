@@ -2,8 +2,10 @@ use std::{array, collections::HashMap};
 
 use augmented_matrix::AugmentedMatrix;
 use function::{EvalResult, Function};
-use matrix::Matrix;
+use matrix::{Matrix, Vector};
+use rand::rng;
 use rational::Rational;
+use ring_field::Ring;
 
 mod augmented_matrix;
 mod function;
@@ -44,10 +46,28 @@ fn main() {
                     f
                 }
             });
+
             println!(
                 "Functions are:\r\n{}",
-                funcs.map(|f| format!("{f:?}")).join("\r\n")
-            )
+                funcs.each_ref().map(|f| format!("{f:?}")).join("\r\n")
+            );
+
+            for _ in 0..20 {
+                let mut vars = HashMap::new();
+                for f in &funcs {
+                    for v in f.variables() {
+                        if !vars.contains_key(&v) {
+                            vars.insert(v, Function::Constant(Rational::generate(&mut rng())));
+                        }
+                    }
+                }
+                let test = Vector::v_new(funcs.each_ref().map(|f| match f.eval(&vars) {
+                    EvalResult::Res(Function::Constant(v)) => v,
+                    _ => panic!("failed to evaluate"),
+                }));
+                println!("Test value:\n{test:?}");
+                assert_eq!(m * test, s);
+            }
         } else {
             println!("Couldn't generate parametric form")
         }
