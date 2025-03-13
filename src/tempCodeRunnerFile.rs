@@ -1,1 +1,1 @@
-.cast_into::<Rational>()
+println

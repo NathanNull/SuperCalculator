@@ -3,6 +3,8 @@ use std::{
     usize,
 };
 
+const ALWAYS_BRACKET: bool = false;
+
 use crate::ring_field::Ring;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -21,7 +23,7 @@ pub enum EvalResult<TEntry: Ring> {
 }
 use EvalResult::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum FunctionPath {
     Left,
     Right,
@@ -38,45 +40,98 @@ impl<TEntry: Ring> Function<TEntry> {
 
             Self::Sum(lhs, rhs) | Self::Product(lhs, rhs) => {
                 let (lv, rv) = (lhs.eval(vars), rhs.eval(vars));
-                match self {
-                    // Additive identity
-                    Self::Sum(_, _) if lv == Res(Self::Constant(TEntry::additive_ident())) => {
-                        return rv
-                    }
-                    Self::Sum(_, _) if rv == Res(Self::Constant(TEntry::additive_ident())) => {
-                        return lv
-                    }
-
-                    // Multiplicative identity
-                    Self::Product(_, _)
-                        if lv == Res(Self::Constant(TEntry::multiplicative_ident())) =>
-                    {
-                        return rv
-                    }
-                    Self::Product(_, _)
-                        if rv == Res(Self::Constant(TEntry::multiplicative_ident())) =>
-                    {
-                        return lv
-                    }
-
-                    // Multiplicative absorption (0)
-                    Self::Product(_, _)
-                        if lv == Res(Self::Constant(TEntry::additive_ident()))
-                            || rv == Res(Self::Constant(TEntry::additive_ident())) =>
-                    {
-                        return Res(Self::Constant(TEntry::additive_ident()))
-                    }
+                println!("Inspecting {lv:?}, {rv:?}");
+                match (&lv, &rv) {
+                    (Res(lhs), Res(rhs)) => {
+                        println!(
+                            "{:?}",
+                            rhs.is_const_product() == Some(FunctionPath::Left) && lhs.is_constant()
+                        );
+                    },
                     _ => {}
                 }
+
                 match (lv, rv) {
                     (Res(Self::Constant(lhs_val)), Res(Self::Constant(rhs_val))) => match self {
                         Self::Sum(_, _) => Res(Self::Constant(lhs_val + rhs_val)),
                         Self::Product(_, _) => Res(Self::Constant(lhs_val * rhs_val)),
                         _ => unreachable!(),
                     },
-                    (Res(rhs), Res(lhs)) => Res(match self {
-                        Self::Sum(_, _) => Self::Sum(Box::new(rhs), Box::new(lhs)),
-                        Self::Product(_, _) => Self::Product(Box::new(rhs), Box::new(lhs)),
+                    (Res(lhs), Res(rhs)) => Res(match self {
+                        Self::Sum(_, _) => {
+                            // Additive identity
+                            if lhs == Self::Constant(TEntry::additive_ident()) {
+                                rhs
+                            } else if rhs == Self::Constant(TEntry::additive_ident()) {
+                                lhs
+                            // Additive associativity
+                            } else if lhs.is_constant() && rhs.is_const_sum() {
+                                match rhs {
+                                    Self::Sum(a, b) if a.is_constant() => Self::Sum(
+                                        Box::new(Self::Constant(
+                                            a.as_constant() + lhs.as_constant(),
+                                        )),
+                                        b,
+                                    ),
+                                    _ => unreachable!(),
+                                }
+                            } else if lhs.is_const_sum() && rhs.is_constant() {
+                                match lhs {
+                                    Self::Sum(a, b) if a.is_constant() => Self::Sum(
+                                        Box::new(Self::Constant(
+                                            a.as_constant() + rhs.as_constant(),
+                                        )),
+                                        b,
+                                    ),
+                                    _ => unreachable!(),
+                                }
+                            } else {
+                                Self::Sum(Box::new(lhs), Box::new(rhs))
+                            }
+                        }
+                        Self::Product(_, _) => {
+                            println!("Entered product");
+                            // Multiplicative identity
+                            if lhs == Self::Constant(TEntry::multiplicative_ident()) {
+                                rhs
+                            } else if rhs == Self::Constant(TEntry::multiplicative_ident()) {
+                                lhs
+                            // Multiplicative absorption (0)
+                            } else if lhs == Self::Constant(TEntry::additive_ident())
+                                || rhs == Self::Constant(TEntry::additive_ident())
+                            {
+                                Self::Constant(TEntry::additive_ident())
+                            // Multiplicative absorption
+                            } else if lhs.is_const_product() == Some(FunctionPath::Right)
+                                && rhs.is_constant()
+                            {
+                                match lhs {
+                                    Self::Product(a, b) => Self::Product(
+                                        a,
+                                        Box::new(Self::Constant(
+                                            b.as_constant() * rhs.as_constant(),
+                                        )),
+                                    ),
+                                    _ => unreachable!(),
+                                }
+                            } else if rhs.is_const_product() == Some(FunctionPath::Left)
+                                && lhs.is_constant()
+                            {
+                                println!("Entered function");
+                                match rhs {
+                                    Self::Product(a, b) => Self::Product(
+                                        Box::new(Self::Constant(
+                                            lhs.as_constant() * a.as_constant(),
+                                        )),
+                                        b,
+                                    ),
+                                    _ => unreachable!(),
+                                }
+                            } else {
+                                println!("Did nothing");
+                                Self::Product(Box::new(lhs), Box::new(rhs))
+                            }
+                        }
                         _ => unreachable!(),
                     }),
                     (Res(_), InvalidCalculation) => InvalidCalculation,
@@ -92,6 +147,35 @@ impl<TEntry: Ring> Function<TEntry> {
                 Res(function) => Res(Self::Inverse(Box::new(function))),
                 InvalidCalculation => InvalidCalculation,
             },
+        }
+    }
+
+    fn is_constant(&self) -> bool {
+        match self {
+            Self::Constant(_) => true,
+            _ => false,
+        }
+    }
+
+    fn as_constant(&self) -> TEntry {
+        match self {
+            Self::Constant(v) => *v,
+            _ => panic!("Value wasn't a constant"),
+        }
+    }
+
+    fn is_const_product(&self) -> Option<FunctionPath> {
+        match self {
+            Self::Product(a, _) if a.is_constant() => Some(FunctionPath::Left),
+            Self::Product(_, b) if b.is_constant() => Some(FunctionPath::Right),
+            _ => None,
+        }
+    }
+
+    fn is_const_sum(&self) -> bool {
+        match self {
+            Self::Sum(a, b) if a.is_constant() || b.is_constant() => true,
+            _ => false,
         }
     }
 
@@ -139,7 +223,7 @@ impl<TEntry: Ring> Function<TEntry> {
 
     fn debug(&self, priority: usize) -> String {
         let mut string = String::with_capacity(512);
-        if self.priority() > priority {
+        if self.priority() > priority || ALWAYS_BRACKET {
             string.push('(');
         }
         match self {
@@ -159,7 +243,7 @@ impl<TEntry: Ring> Function<TEntry> {
                 string.push_str("⁻¹");
             }
         }
-        if self.priority() > priority {
+        if self.priority() > priority || ALWAYS_BRACKET {
             string.push(')');
         }
         string
@@ -198,9 +282,7 @@ impl<TEntry: Ring> Equation<TEntry> {
         }
         .into_iter()
         .collect::<VecDeque<_>>();
-        println!("Path found is {path:?}");
         while let Some(next_op) = path.pop_back() {
-            println!("Curr equation: {lh:?} = {rh:?}, next op: {next_op:?}");
             match (lh, next_op) {
                 (Function::Constant(_), _) | (Function::Variable(_), _) => {
                     unreachable!("Path should have ended by now")

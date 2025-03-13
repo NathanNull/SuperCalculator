@@ -20,8 +20,8 @@ macro_rules! matrix {
 const VARS: &str = "abcedfghijklmnopqrstuvwxyz";
 
 fn main() {
-    let m = matrix!(1,2;2,4);
-    let s = matrix!(1;3);
+    let m = matrix!(1,2,3;4,5,6;7,8,9);
+    let s = matrix!(1;3;5);
     let aug = AugmentedMatrix::new(m, s);
     if let Some(aug) = aug.solve() {
         println!("Matrix: \n{:?}\n{:?}", aug.left_matrix, aug.right_matrix);

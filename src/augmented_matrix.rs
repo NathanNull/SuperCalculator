@@ -37,7 +37,7 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
         r_names: [String; CR],
     ) -> Option<[Function<TEntry>; CL]> {
         if !self.left_matrix.is_rref() {
-            println!("Not rref");
+            //println!("Not rref");
             return None;
         }
         let leading_entries = self.left_matrix.leading_entries();
@@ -46,7 +46,6 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
             let rhs = map_row_to_function(self.right_matrix.entries[row], r_names.clone());
             Equation::new(lhs, rhs)
         });
-        println!("Equations: {equations:?}");
 
         let mut arr = array::from_fn(|i| Function::Variable(l_names[i].clone()));
         let mut map = HashMap::new();
@@ -57,17 +56,17 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
                         arr[entry] = res.clone();
                         map.insert(l_names[entry].clone(), res);
                     } else {
-                        println!("Couldn't eval {func:?} w/ {map:?}");
+                        //println!("Couldn't eval {func:?} w/ {map:?}");
                         return None;
                     }
                 } else {
-                    println!("Couldn't solve {eq:?} for {:?}", l_names[entry]);
+                    //println!("Couldn't solve {eq:?} for {:?}", l_names[entry]);
                     return None;
                 }
             } else {
                 if !eq.equals_zero() {
                     // Inconsistent matrix (i.e. 0 0 0 0 0 | n, n!=0)
-                    println!("Inconsistent matrix");
+                    //println!("Inconsistent matrix");
                     return None;
                 }
             }
