@@ -1,7 +1,7 @@
 use std::{array, collections::HashMap};
 
 use crate::{
-    function::{Equation, EvalResult, Function},
+    function::{Equation, Function},
     matrix::Matrix,
     ring_field::Ring,
 };
@@ -52,12 +52,13 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
         for (eq, entry) in equations.into_iter().zip(leading_entries).rev() {
             if let Some(entry) = entry {
                 if let Some(func) = eq.solve_for(&l_names[entry]) {
-                    if let EvalResult::Res(res) = func.eval(&map) {
-                        arr[entry] = res.clone();
-                        map.insert(l_names[entry].clone(), res);
-                    } else {
+                    let res = func.eval(&map);
+                    if let Function::Undefined = res {
                         //println!("Couldn't eval {func:?} w/ {map:?}");
                         return None;
+                    } else {
+                        arr[entry] = res.clone();
+                        map.insert(l_names[entry].clone(), res);
                     }
                 } else {
                     //println!("Couldn't solve {eq:?} for {:?}", l_names[entry]);

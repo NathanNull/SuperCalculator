@@ -1,6 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
-    usize,
+    collections::{HashMap, VecDeque}, ops::Add, usize
 };
 
 const ALWAYS_BRACKET: bool = false;
@@ -14,14 +13,8 @@ pub enum Function<TEntry: Ring> {
     Sum(Box<Function<TEntry>>, Box<Function<TEntry>>),
     Product(Box<Function<TEntry>>, Box<Function<TEntry>>),
     Inverse(Box<Function<TEntry>>),
+    Undefined,
 }
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum EvalResult<TEntry: Ring> {
-    Res(Function<TEntry>),
-    InvalidCalculation,
-}
-use EvalResult::*;
 
 #[derive(Debug, PartialEq, Eq)]
 enum FunctionPath {
@@ -30,24 +23,25 @@ enum FunctionPath {
 }
 
 impl<TEntry: Ring> Function<TEntry> {
-    pub fn eval(&self, vars: &HashMap<String, Function<TEntry>>) -> EvalResult<TEntry> {
+    pub fn eval(&self, vars: &HashMap<String, Self>) -> Self {
         match self {
-            Self::Constant(_) => Res(self.clone()),
+            Self::Constant(_) => self.clone(),
             Self::Variable(v) => vars
                 .get(v)
-                .map(|n| Res(n.clone()))
-                .unwrap_or(Res(self.clone())),
+                .map(|n| n.clone())
+                .unwrap_or(self.clone()),
 
             Self::Sum(lhs, rhs) | Self::Product(lhs, rhs) => {
                 let (lv, rv) = (lhs.eval(vars), rhs.eval(vars));
 
                 match (lv, rv) {
-                    (Res(Self::Constant(lhs_val)), Res(Self::Constant(rhs_val))) => match self {
-                        Self::Sum(_, _) => Res(Self::Constant(lhs_val + rhs_val)),
-                        Self::Product(_, _) => Res(Self::Constant(lhs_val * rhs_val)),
+                    (Self::Undefined, _) | (_, Self::Undefined) => Self::Undefined,
+                    (Self::Constant(lhs_val), Self::Constant(rhs_val)) => match self {
+                        Self::Sum(_, _) => Self::Constant(lhs_val + rhs_val),
+                        Self::Product(_, _) => Self::Constant(lhs_val * rhs_val),
                         _ => unreachable!(),
                     },
-                    (Res(lhs), Res(rhs)) => Res(match self {
+                    (lhs, rhs) => match self {
                         Self::Sum(_, _) => {
                             // Additive identity
                             if lhs == Self::Constant(TEntry::additive_ident()) {
@@ -121,20 +115,18 @@ impl<TEntry: Ring> Function<TEntry> {
                             }
                         }
                         _ => unreachable!(),
-                    }),
-                    (Res(_), InvalidCalculation) => InvalidCalculation,
-                    (InvalidCalculation, Res(_)) => InvalidCalculation,
-                    (InvalidCalculation, InvalidCalculation) => InvalidCalculation,
+                    },
                 }
             }
             Self::Inverse(val) => match val.eval(vars) {
-                Res(Self::Constant(c)) => c
+                Self::Undefined => Self::Undefined,
+                Self::Constant(c) => c
                     .try_inverse()
-                    .map(|v| Res(Function::Constant(v)))
-                    .unwrap_or(InvalidCalculation),
-                Res(function) => Res(Self::Inverse(Box::new(function))),
-                InvalidCalculation => InvalidCalculation,
+                    .map(|v| Function::Constant(v))
+                    .unwrap_or(Self::Undefined),
+                function => Self::Inverse(Box::new(function)),
             },
+            Self::Undefined => self.clone()
         }
     }
 
@@ -169,20 +161,20 @@ impl<TEntry: Ring> Function<TEntry> {
 
     pub fn variables(&self) -> Vec<String> {
         match self {
-            Function::Constant(_) => vec![],
-            Function::Variable(v) => vec![v.to_string()],
-            Function::Sum(l, r) | Function::Product(l, r) => l
+            Self::Constant(_) | Self::Undefined => vec![],
+            Self::Variable(v) => vec![v.to_string()],
+            Self::Sum(l, r) | Self::Product(l, r) => l
                 .variables()
                 .into_iter()
                 .chain(r.variables().into_iter())
                 .collect(),
-            Function::Inverse(v) => v.variables(),
+            Self::Inverse(v) => v.variables(),
         }
     }
 
     fn find(&self, var: &str) -> Option<Vec<FunctionPath>> {
         match self {
-            Self::Constant(_) => None,
+            Self::Constant(_) | Self::Undefined => None,
             Self::Variable(v) => {
                 if v == var {
                     Some(vec![])
@@ -218,7 +210,7 @@ impl<TEntry: Ring> Function<TEntry> {
             Self::Sum(_, _) => 3,
             Self::Product(_, _) => 2,
             Self::Inverse(_) => 1,
-            Self::Constant(_) | Self::Variable(_) => 0,
+            Self::Constant(_) | Self::Variable(_) | Self::Undefined => 0,
         }
     }
 
@@ -228,21 +220,22 @@ impl<TEntry: Ring> Function<TEntry> {
             string.push('(');
         }
         match self {
-            Function::Constant(c) => string.push_str(&format!("{c:?}")),
-            Function::Variable(v) => string.push_str(v),
-            Function::Sum(lhs, rhs) | Function::Product(lhs, rhs) => {
+            Self::Constant(c) => string.push_str(&format!("{c:?}")),
+            Self::Variable(v) => string.push_str(v),
+            Self::Sum(lhs, rhs) | Self::Product(lhs, rhs) => {
                 string.push_str(&lhs.debug(self.priority()));
                 string.push(match self {
-                    Function::Sum(_, _) => '+',
-                    Function::Product(_, _) => '*',
+                    Self::Sum(_, _) => '+',
+                    Self::Product(_, _) => '*',
                     _ => unreachable!(),
                 });
                 string.push_str(&rhs.debug(self.priority()));
             }
-            Function::Inverse(val) => {
+            Self::Inverse(val) => {
                 string.push_str(&val.debug(self.priority()));
                 string.push_str("⁻¹");
             }
+            Self::Undefined => string.push_str("undefined"),
         }
         if self.priority() > priority || ALWAYS_BRACKET {
             string.push(')');
@@ -285,7 +278,7 @@ impl<TEntry: Ring> Equation<TEntry> {
         .collect::<VecDeque<_>>();
         while let Some(next_op) = path.pop_back() {
             match (lh, next_op) {
-                (Function::Constant(_), _) | (Function::Variable(_), _) => {
+                (Function::Constant(_) | Function::Variable(_) | Function::Undefined, _) => {
                     unreachable!("Path should have ended by now")
                 }
                 (Function::Sum(lhs, rhs), FunctionPath::Left) => {
@@ -312,10 +305,10 @@ impl<TEntry: Ring> Equation<TEntry> {
                 }
             }
             let rh_test = rh.eval(&HashMap::new());
-            if let Res(rh_new) = rh_test {
-                rh = rh_new;
-            } else {
+            if let Function::Undefined = rh_test {
                 return None;
+            } else {
+                rh = rh_test;
             }
         }
         assert_eq!(lh, Function::Variable(var.to_string()));
@@ -330,5 +323,13 @@ impl<TEntry: Ring> Equation<TEntry> {
 impl<TEntry: Ring> std::fmt::Debug for Equation<TEntry> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?} = {:?}", self.lhs, self.rhs)
+    }
+}
+
+impl<TEntry: Ring> Add for Function<TEntry> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::Sum(Box::new(self), Box::new(rhs)).eval(&HashMap::new())
     }
 }
