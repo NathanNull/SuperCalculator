@@ -44,3 +44,11 @@ impl<const R: usize, const M: usize, const C: usize, TEntry: Ring> Mul<Matrix<TE
         }
     }
 }
+
+impl<const R: usize, const C: usize, TEntry: Ring> Mul<TEntry> for Matrix<TEntry, R, C> {
+    type Output = Self;
+    fn mul(mut self, rhs: TEntry) -> Self::Output {
+        self.scale(rhs);
+        self
+    }
+}

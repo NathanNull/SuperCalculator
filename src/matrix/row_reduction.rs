@@ -1,45 +1,67 @@
-use std::array;
-
 use super::*;
 
+#[derive(Debug)]
+pub struct PivotPosition {
+    pub row: usize,
+    pub col: usize,
+}
+
+impl PivotPosition {
+    pub fn new(row: usize, col: usize) -> Self {
+        Self { row, col }
+    }
+}
+
 impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
+    pub fn is_ref(&self) -> bool {
+        let mut last_pos: Option<(usize, usize)> = None;
+        println!("{:?}", self.pivots_unchecked());
+        for PivotPosition { row, col } in self.pivots_unchecked().iter().rev() {
+            // Ensure leading entry is to the right of the last
+            if last_pos.is_some_and(|p| *col >= p.1) {
+                println!("Leading entry to left of previous ({col}, {last_pos:?})");
+                return false;
+            } else if last_pos.is_some_and(|p| p.0 != row + 1) {
+                println!("Zero row in between nonzero rows ({row}, {last_pos:?})");
+                return false;
+            }
+            last_pos = Some((*row, *col));
+
+            // Ensure all lower rows have a zero in this column
+            for test_row in row + 1..R {
+                if self.entries[test_row][*col] != TEntry::additive_ident() {
+                    println!("Nonzero entry below leading entry");
+                    return false;
+                }
+            }
+        }
+        // So long as the first row isn't a zero, we're good
+        last_pos.is_none()
+            || self.entries[0]
+                .iter()
+                .any(|v| *v != TEntry::additive_ident())
+    }
+
     pub fn is_rref(&self) -> bool {
-        let mut last_pos = None;
-        for r in R-1..=0 {
+        for r in R - 1..=0 {
             let mut col = 0;
             while self.entries[r][col] == TEntry::additive_ident() {
                 col += 1;
                 if col >= C {
                     // This is a zero row
-                    if last_pos.is_none() {
-                        continue;
-                    } else {
-                        // Ensure all of the zero rows are at the bottom
-                        println!("Zero row above nonzero row");
-                        return false;
-                    }
+                    continue;
                 }
             }
-            // Ensure leading entry is to the right of the last
-            if last_pos.is_some_and(|p|col<=p) {
-                println!("Leading entry to left of previous");
-                return false;
-            }
-            last_pos = Some(col);
-
             // Ensure leading entry is a 1 (or equivalent)
             if self.entries[r][col] != TEntry::multiplicative_ident() {
                 println!("Leading entry not a 1");
                 return false;
             }
 
-            // Ensure all other rows have a zero in this column
-            for test_row in 0..R {
-                if test_row == r {
-                    continue;
-                }
+            // Ensure all higher rows have a zero in this column
+            for test_row in 0..r {
                 if self.entries[test_row][col] != TEntry::additive_ident() {
-                    println!("Nonzero entry above/below leading entry");
+                    println!("Nonzero entry above leading entry");
                     return false;
                 }
             }
@@ -47,15 +69,24 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         true
     }
 
-    pub fn leading_entries(&self) -> [Option<usize>; R] {
-        array::from_fn(|row|{
+    pub fn pivots(&self) -> Vec<PivotPosition> {
+        if !self.is_ref() {
+            panic!("{self:?}: Can't find pivots of non-reduced matrix")
+        }
+        self.pivots_unchecked()
+    }
+
+    fn pivots_unchecked(&self) -> Vec<PivotPosition> {
+        let mut pivots = vec![];
+        for row in 0..R {
             for col in 0..C {
                 if self.entries[row][col] != TEntry::additive_ident() {
-                    return Some(col);
+                    pivots.push(PivotPosition::new(row, col));
+                    break;
                 }
             }
-            None
-        })
+        }
+        pivots
     }
 
     pub fn try_reduce_to_ref(mut self) -> Result<(Self, Vec<RowReductionStep<TEntry, R>>), ()> {

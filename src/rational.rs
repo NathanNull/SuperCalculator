@@ -194,16 +194,16 @@ impl From<i32> for Rational {
 
 #[macro_export]
 macro_rules! r {
-    (-$num:literal / $den:literal) => {
+    (-$num:tt / $den:tt) => {
         Rational::new(false, $num, $den)
     };
-    ($num:literal / $den:literal) => {
+    ($num:tt / $den:tt) => {
         Rational::new(true, $num, $den)
     };
-    (-$num:literal) => {
+    (-$num:tt) => {
         Rational::new(false, $num, 1)
     };
-    ($num:literal) => {
+    ($num:tt) => {
         Rational::new(true, $num, 1)
     };
 }

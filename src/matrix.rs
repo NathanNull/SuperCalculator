@@ -4,7 +4,8 @@ use rand::rngs::ThreadRng;
 
 use crate::{
     augmented_matrix::AugmentedMatrix,
-    ring_field::{Field, Ring},
+    debug_multi::DebugMulti,
+    ring_field::{Field, Ring}, vector_space::span::{Span, Basis},
 };
 
 mod ops;
@@ -18,6 +19,24 @@ pub struct Matrix<TEntry: Ring, const R: usize, const C: usize> {
 impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     pub fn new(entries: [[TEntry; C]; R]) -> Self {
         Self { entries }
+    }
+
+    pub fn new_columns(columns: [[TEntry; R]; C]) -> Self {
+        Matrix::new(columns).transpose()
+    }
+
+    pub fn transpose(&self) -> Matrix<TEntry, C, R> {
+        let mut t = Matrix::new([[TEntry::additive_ident(); R]; C]);
+        for r in 0..R {
+            for c in 0..C {
+                t.entries[c][r] = self.entries[r][c];
+            }
+        }
+        t
+    }
+
+    pub fn columns(&self) -> [ColumnVector<TEntry, R>; C] {
+        self.transpose().entries.map(|col| ColumnVector::v_new(col))
     }
 
     pub fn scale(&mut self, scalar: TEntry) {
@@ -40,10 +59,17 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         UnsizedMatrix::new(entries)
     }
 
-    #[allow(unused)]
     pub fn cast_into<TOtherEntry: From<TEntry> + Ring>(self) -> Matrix<TOtherEntry, R, C> {
         let entries = self.entries.map(|row| row.map(|v| TOtherEntry::from(v)));
         Matrix { entries }
+    }
+
+    pub fn column_space(&self) -> Basis<TEntry, R, ColumnVector<TEntry, R>> where TEntry: Field {
+        Span::new(self.columns()).basis()
+    }
+
+    pub fn rank(&self) -> usize where TEntry: Field {
+        self.column_space().dimension()
     }
 }
 
@@ -53,17 +79,20 @@ impl<TEntry: Ring, const R: usize, const C: usize> std::fmt::Debug for Matrix<TE
     }
 }
 
-#[allow(unused)]
-pub type Vector<TEntry, const N: usize> = Matrix<TEntry, N, 1>;
-impl<TEntry: Ring, const N: usize> Vector<TEntry, N> {
+pub type ColumnVector<TEntry, const N: usize> = Matrix<TEntry, N, 1>;
+impl<TEntry: Ring, const N: usize> ColumnVector<TEntry, N> {
     pub fn v_new(entries: [TEntry; N]) -> Self {
         Self {
-            entries: entries.map(|r|[r])
+            entries: entries.map(|r| [r]),
         }
+    }
+
+    pub fn as_array(&self) -> [TEntry; N] {
+        self.entries.map(|r| r[0])
     }
 }
 
-type SquareMatrix<TEntry, const N: usize> = Matrix<TEntry, N, N>;
+pub type SquareMatrix<TEntry, const N: usize> = Matrix<TEntry, N, N>;
 impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
     #[allow(unused)]
     pub fn determinant(&self) -> TEntry {
@@ -178,40 +207,45 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
 
 impl<TEntry: Ring> std::fmt::Debug for UnsizedMatrix<'_, TEntry> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let res: Vec<Vec<String>> = self
+        let res: Vec<Vec<Vec<String>>> = self
             .entries
             .iter()
-            .map(|r| r.iter().map(|c| format!("{:?}", c)).collect())
+            .map(|r| r.iter().map(|c| c.lines()).collect())
             .collect();
         let max_len = res.iter().fold(0, |acc, row| {
-            acc.max(row.iter().fold(0, |a2, s| a2.max(s.len())))
+            acc.max(row.iter().fold(0, |a2, s| {
+                a2.max(s.iter().fold(0, |a3, s2| a3.max(s2.len())))
+            }))
         });
+        let lines = (*self.entries[0][0]).lines().len();
         for r in 0..self.size.0 {
-            write!(
-                f,
-                "{}",
-                match r {
-                    0 if self.size.0 == 1 => "(",
-                    0 => "╭",
-                    n if n == self.size.0 - 1 => "\r\n╰",
-                    _ => "\r\n│",
+            for l in 0..lines {
+                write!(
+                    f,
+                    "{}",
+                    match r * lines + l {
+                        0 if self.size.0 == 1 && lines == 1 => "(",
+                        0 => "╭",
+                        n if n == self.size.0 * lines - 1 => "\r\n╰",
+                        _ => "\r\n│",
+                    }
+                )?;
+                for c in 0..self.size.1 {
+                    let entry = &res[r][c][l];
+                    let spaces = " ".repeat(max_len - entry.len());
+                    write!(f, " {entry}{spaces} ")?;
                 }
-            )?;
-            for c in 0..self.size.1 {
-                let entry = &res[r][c];
-                let spaces = " ".repeat(max_len - entry.len());
-                write!(f, " {entry}{spaces} ")?;
+                write!(
+                    f,
+                    "{}",
+                    match r * lines + l {
+                        0 if self.size.0 == 1 && lines == 1 => ")",
+                        0 => "╮",
+                        n if n == self.size.0 * lines - 1 => "╯",
+                        _ => "│",
+                    }
+                )?;
             }
-            write!(
-                f,
-                "{}",
-                match r {
-                    0 if self.size.0 == 1 => ")",
-                    0 => "╮",
-                    n if n == self.size.0 - 1 => "╯",
-                    _ => "│",
-                }
-            )?;
         }
         Ok(())
     }

@@ -40,7 +40,7 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
             //println!("Not rref");
             return None;
         }
-        let leading_entries = self.left_matrix.leading_entries();
+        let pivots = self.left_matrix.pivots();
         let equations: [Equation<TEntry>; R] = array::from_fn(|row| {
             let lhs = map_row_to_function(self.left_matrix.entries[row], l_names.clone());
             let rhs = map_row_to_function(self.right_matrix.entries[row], r_names.clone());
@@ -49,8 +49,8 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
 
         let mut arr = array::from_fn(|i| Function::Variable(l_names[i].clone()));
         let mut map = HashMap::new();
-        for (eq, entry) in equations.into_iter().zip(leading_entries).rev() {
-            if let Some(entry) = entry {
+        for (row, eq) in equations.into_iter().enumerate().rev() {
+            if let Some(entry) = pivots.iter().find(|pos| pos.row == row).map(|pos| pos.col) {
                 if let Some(func) = eq.solve_for(&l_names[entry]) {
                     let res = func.eval(&map);
                     if let Function::Undefined = res {
