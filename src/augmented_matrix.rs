@@ -1,6 +1,7 @@
 use std::{array, collections::HashMap};
 
 use crate::{
+    debug_multi::DebugMulti,
     function::{Equation, Function},
     matrix::Matrix,
     ring_field::Ring,
@@ -102,4 +103,40 @@ fn map_row_to_function<TEntry: Ring, const L: usize>(
             }
         })
         .unwrap_or(Function::Constant(TEntry::additive_ident()))
+}
+
+impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize> std::fmt::Debug
+    for AugmentedMatrix<TEntry, R, CL, CR>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let res = [self.left_matrix.lines(), self.right_matrix.lines()];
+        let lines = res[0].len();
+        for l in 0..lines {
+            write!(
+                f,
+                "{}",
+                match l {
+                    0 if lines == 1 => "{",
+                    0 => "╭",
+                    n if n == lines - 1 => "\r\n╰",
+                    _ => "\r\n│",
+                }
+            )?;
+            for c in 0..2 {
+                let entry = &res[c][l];
+                write!(f, " {entry} ")?;
+            }
+            write!(
+                f,
+                "{}",
+                match l {
+                    0 if lines == 1 => "}",
+                    0 => "╮",
+                    n if n == lines - 1 => "╯",
+                    _ => "│",
+                }
+            )?;
+        }
+        Ok(())
+    }
 }

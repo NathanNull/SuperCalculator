@@ -180,9 +180,13 @@ impl Ring for Rational {
             den: 1,
         }
     }
-    
+
     fn generate(rng: &mut rand::prelude::ThreadRng) -> Self {
-        Self::new(rng.random_bool(0.5), rng.random::<u8>() as u64, rng.random::<u8>() as u64)
+        Self::new(
+            rng.random_bool(0.5),
+            rng.random::<u8>() as u64,
+            rng.random::<u8>() as u64,
+        )
     }
 }
 
@@ -194,16 +198,11 @@ impl From<i32> for Rational {
 
 #[macro_export]
 macro_rules! r {
-    (-$num:tt / $den:tt) => {
-        Rational::new(false, $num, $den)
-    };
-    ($num:tt / $den:tt) => {
-        Rational::new(true, $num, $den)
-    };
-    (-$num:tt) => {
-        Rational::new(false, $num, 1)
-    };
-    ($num:tt) => {
-        Rational::new(true, $num, 1)
+    ($num:literal $(/$den:literal)? ) => {
+        Rational::new($num>=0, if $num<0 {
+            -($num)
+        } else {
+            $num
+        } as u64, 1$(*$den)?)
     };
 }
