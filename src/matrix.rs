@@ -11,7 +11,7 @@ use crate::{
 mod ops;
 mod row_reduction;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct Matrix<TEntry: Ring, const R: usize, const C: usize> {
     pub entries: [[TEntry; C]; R],
 }

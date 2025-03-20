@@ -27,46 +27,66 @@ macro_rules! matrix {
     };
 }
 
+macro_rules! fmatrix {
+    ($( $( $num:literal ),+ );+ ) => {
+        Matrix::new([ $( [ $( {
+            $num as f64
+        } ),* ] ),* ])
+    };
+}
+
 const VARS: &str = "abcedfghijklmnopqrstuvwxyz1";
 
 fn main() -> Result<(), &'static str> {
-    let m = matrix!(-6,2;1,-1);
-    let nm2 = m * m * r!(-1);
+    // 37.815799
+    let a = fmatrix!(-37.815,33,5;10,-37.815,20;30,20,-37.815);
 
-    let m_col = m.to_column();
-    let i_col = matrix!(1;0;0;1);
-    let aug = AugmentedMatrix::new(
-        Matrix::new_columns([m_col.as_array(), i_col.as_array()]),
-        nm2.to_column(),
-    )
-    .solve()
-    .unwrap();
-
-    let pf = aug.gen_parametric_form(
-        array::from_fn(|i| VARS[i..=i].to_string()),
-        ["1".to_string()],
-    ).unwrap();
-
+    let aug = AugmentedMatrix::new(a, ColumnVector::zero()).solve().unwrap();
+    println!("{aug:?}");
+    let pf = aug
+        .gen_parametric_form(
+            array::from_fn(|i| VARS[i..=i].to_string()),
+            ["1".to_string()],
+        )
+        .unwrap().map(|f|f.eval(&HashMap::from_iter([("1".to_string(),Function::Constant(1.))])));
     println!("{pf:?}");
 
-    let vec = ColumnVector::v_new(
-        pf.map(|f| {
-            f.eval(&HashMap::from_iter(
-                VARS.chars()
-                    .map(|c| (c.to_string(), Function::Constant(r!(1)))),
-            ))
-        })
-        .map(|f| {
-            if let Function::Constant(v) = f {
-                v
-            } else {
-                panic!("Eval failed")
-            }
-        }),
-    );
+    // let m = matrix!(-6,2;1,-1);
+    // let nm2 = m * m * r!(-1);
 
-    println!("{vec:?}: lc");
-    
+    // let m_col = m.to_column();
+    // let i_col = matrix!(1;0;0;1);
+    // let aug = AugmentedMatrix::new(
+    //     Matrix::new_columns([m_col.as_array(), i_col.as_array()]),
+    //     nm2.to_column(),
+    // )
+    // .solve()
+    // .unwrap();
+
+    // let pf = aug.gen_parametric_form(
+    //     array::from_fn(|i| VARS[i..=i].to_string()),
+    //     ["1".to_string()],
+    // ).unwrap();
+
+    // println!("{pf:?}");
+
+    // let vec = ColumnVector::v_new(
+    //     pf.map(|f| {
+    //         f.eval(&HashMap::from_iter(
+    //             VARS.chars()
+    //                 .map(|c| (c.to_string(), Function::Constant(r!(1)))),
+    //         ))
+    //     })
+    //     .map(|f| {
+    //         if let Function::Constant(v) = f {
+    //             v
+    //         } else {
+    //             panic!("Eval failed")
+    //         }
+    //     }),
+    // );
+
+    // println!("{vec:?}: lc");
 
     // Quadrilateral area. Very useful.
     // Needs to be counterclockwise I believe, quadrant I->II->III->IV

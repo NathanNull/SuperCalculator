@@ -3,7 +3,13 @@ use std::ops::{Add, Div, Mul, Sub};
 use rand::{rngs::ThreadRng, Rng};
 
 pub trait Ring:
-    Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Copy + Eq + std::fmt::Debug + Sized
+    Add<Output = Self>
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Copy
+    + PartialEq
+    + std::fmt::Debug
+    + Sized
 {
     fn try_inverse(&self) -> Option<Self>;
     fn negate(&self) -> Self;
@@ -32,7 +38,7 @@ impl Ring for i32 {
     fn multiplicative_ident() -> Self {
         1
     }
-    
+
     fn generate(rng: &mut ThreadRng) -> Self {
         rng.random()
     }
@@ -44,3 +50,31 @@ pub trait TrueDiv: Div<Output = Self> + Sized {
 
 pub trait Field: Ring + TrueDiv {}
 impl<T: Ring + TrueDiv> Field for T {}
+
+impl Ring for f64 {
+    fn try_inverse(&self) -> Option<Self> {
+        Some(1. / self)
+    }
+
+    fn negate(&self) -> Self {
+        -self
+    }
+
+    fn additive_ident() -> Self {
+        0.
+    }
+
+    fn multiplicative_ident() -> Self {
+        1.
+    }
+
+    fn generate(rng: &mut ThreadRng) -> Self {
+        rng.random::<Self>() % 1024.
+    }
+}
+
+impl TrueDiv for f64 {
+    fn inverse(&self) -> Self {
+        1. / self
+    }
+}

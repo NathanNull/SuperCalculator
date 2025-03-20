@@ -9,7 +9,7 @@ use crate::{
 pub mod span;
 
 pub trait Vector<TEntry: Field, const DIMENSION: usize>:
-    Add<Output = Self> + Mul<TEntry, Output = Self> + Copy + Eq + DebugMulti + Sized
+    Add<Output = Self> + Mul<TEntry, Output = Self> + Copy + PartialEq + DebugMulti + Sized
 {
     fn to_column(&self) -> ColumnVector<TEntry, DIMENSION>;
     fn zero() -> Self;
