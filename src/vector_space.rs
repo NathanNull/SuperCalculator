@@ -1,9 +1,9 @@
-use std::ops::{Add, Mul};
+use std::{array, ops::{Add, Mul}};
+
+use rand::rngs::ThreadRng;
 
 use crate::{
-    if_trait::{If, True},
-    matrix::{ColumnVector, SquareMatrix},
-    ring_field::Field, debug_multi::DebugMulti,
+    debug_multi::DebugMulti, if_trait::{If, True}, matrix::{ColumnVector, SquareMatrix}, ring_field::{Field, Ring}
 };
 
 pub mod span;

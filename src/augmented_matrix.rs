@@ -109,7 +109,24 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize> std::fmt::D
     for AugmentedMatrix<TEntry, R, CL, CR>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let res = [self.left_matrix.lines(), self.right_matrix.lines()];
+        fn rem_first_last(s: String) -> String {
+            let mut c = s.chars();
+            c.next();
+            c.next_back();
+            c.as_str().to_string()
+        }
+        let res: [Vec<_>; 2] = [
+            self.left_matrix
+                .lines()
+                .into_iter()
+                .map(|l| rem_first_last(l))
+                .collect(),
+            self.right_matrix
+                .lines()
+                .into_iter()
+                .map(|l| rem_first_last(l))
+                .collect(),
+        ];
         let lines = res[0].len();
         for l in 0..lines {
             write!(
@@ -122,10 +139,7 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize> std::fmt::D
                     _ => "\r\n│",
                 }
             )?;
-            for c in 0..2 {
-                let entry = &res[c][l];
-                write!(f, " {entry} ")?;
-            }
+            write!(f, "{}│{}", res[0][l], res[1][l])?;
             write!(
                 f,
                 "{}",

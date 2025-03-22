@@ -15,7 +15,6 @@ impl PivotPosition {
 impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     pub fn is_ref(&self) -> bool {
         let mut last_pos: Option<(usize, usize)> = None;
-        println!("{:?}", self.pivots_unchecked());
         for PivotPosition { row, col } in self.pivots_unchecked().iter().rev() {
             // Ensure leading entry is to the right of the last
             if last_pos.is_some_and(|p| *col >= p.1) {

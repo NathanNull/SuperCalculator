@@ -1,5 +1,7 @@
 use std::{
-    collections::{HashMap, VecDeque}, ops::Add, usize
+    collections::{HashMap, VecDeque},
+    ops::Add,
+    usize,
 };
 
 const ALWAYS_BRACKET: bool = false;
@@ -22,14 +24,13 @@ enum FunctionPath {
     Right,
 }
 
+pub const VARS: &str = "abcedfghijklmnopqrstuvwxyz1";
+
 impl<TEntry: Ring> Function<TEntry> {
     pub fn eval(&self, vars: &HashMap<String, Self>) -> Self {
         match self {
             Self::Constant(_) => self.clone(),
-            Self::Variable(v) => vars
-                .get(v)
-                .map(|n| n.clone())
-                .unwrap_or(self.clone()),
+            Self::Variable(v) => vars.get(v).map(|n| n.clone()).unwrap_or(self.clone()),
 
             Self::Sum(lhs, rhs) | Self::Product(lhs, rhs) => {
                 let (lv, rv) = (lhs.eval(vars), rhs.eval(vars));
@@ -110,7 +111,6 @@ impl<TEntry: Ring> Function<TEntry> {
                                     _ => unreachable!(),
                                 }
                             } else {
-                                println!("Did nothing");
                                 Self::Product(Box::new(lhs), Box::new(rhs))
                             }
                         }
@@ -126,7 +126,7 @@ impl<TEntry: Ring> Function<TEntry> {
                     .unwrap_or(Self::Undefined),
                 function => Self::Inverse(Box::new(function)),
             },
-            Self::Undefined => self.clone()
+            Self::Undefined => self.clone(),
         }
     }
 
@@ -241,6 +241,10 @@ impl<TEntry: Ring> Function<TEntry> {
             string.push(')');
         }
         string
+    }
+
+    pub fn unit() -> Self {
+        Self::Constant(TEntry::multiplicative_ident())
     }
 }
 

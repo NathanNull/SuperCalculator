@@ -3,7 +3,7 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use rand::Rng;
+use rand::{rngs::ThreadRng, Rng};
 
 use crate::ring_field::{Ring, TrueDiv};
 
@@ -181,12 +181,13 @@ impl Ring for Rational {
         }
     }
 
-    fn generate(rng: &mut rand::prelude::ThreadRng) -> Self {
-        Self::new(
-            rng.random_bool(0.5),
-            rng.random::<u8>() as u64,
-            rng.random::<u8>() as u64,
-        )
+    fn generate(rng: &mut ThreadRng, basic: bool) -> Self {
+        let (num, den) = if basic {
+            (rng.random_range(..3), 1)
+        } else {
+            (rng.random::<u8>() as u64, rng.random::<u8>() as u64)
+        };
+        Self::new(rng.random_bool(0.5), num, den)
     }
 }
 

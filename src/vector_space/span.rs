@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use rand::rng;
+
 use crate::matrix::Matrix;
 
 use super::*;
@@ -42,7 +44,11 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
     }
 
     pub fn dimension(&self) -> usize {
-        self.basis().vectors.len()
+        self.basis().dimension()
+    }
+
+    pub fn sample(&self, basic: bool) -> TVec {
+        self.basis().sample(basic)
     }
 }
 
@@ -56,6 +62,15 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
 
     pub fn dimension(&self) -> usize {
         self.vectors.len()
+    }
+
+    pub fn sample(&self, basic: bool) -> TVec {
+        let mut res = TVec::zero();
+        let mut rng = rng();
+        for v in &self.vectors {
+            res = res + *v * TEntry::generate(&mut rng, basic);
+        }
+        res
     }
 }
 
@@ -72,9 +87,6 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> std::fmt::Debug
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let res: Vec<Vec<String>> = self.vectors.iter().map(|c| c.lines()).collect();
-        let max_len = res.iter().fold(0, |acc, row| {
-            acc.max(row.iter().fold(0, |a2, s| a2.max(s.len())))
-        });
         let lines = self.vectors[0].lines().len();
         for l in 0..lines {
             write!(
@@ -89,8 +101,14 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> std::fmt::Debug
             )?;
             for c in 0..self.vectors.len() {
                 let entry = &res[c][l];
-                let spaces = " ".repeat(max_len - entry.len());
-                write!(f, " {entry}{spaces} ")?;
+                let comma = if c == self.vectors.len() - 1 {
+                    ""
+                } else if l == lines - 1 {
+                    ","
+                } else {
+                    " "
+                };
+                write!(f, "{entry}{comma}")?;
             }
             write!(
                 f,

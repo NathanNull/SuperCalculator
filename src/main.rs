@@ -3,11 +3,11 @@
 use std::{array, collections::HashMap};
 
 use augmented_matrix::AugmentedMatrix;
-use function::Function;
+use function::{Function, VARS};
 use matrix::{ColumnVector, Matrix, SquareMatrix};
 use rational::Rational;
 use ring_field::{Ring, TrueDiv};
-use vector_space::Vector;
+use vector_space::{span::Span, Vector};
 
 mod augmented_matrix;
 mod debug_multi;
@@ -35,21 +35,22 @@ macro_rules! fmatrix {
     };
 }
 
-const VARS: &str = "abcedfghijklmnopqrstuvwxyz1";
-
 fn main() -> Result<(), &'static str> {
     // 37.815799
-    let a = fmatrix!(-37.815,33,5;10,-37.815,20;30,20,-37.815);
+    let a = matrix!(-3,3,6;-4,5,4;-4,2,7);
+    let e_val = r!(3);
 
-    let aug = AugmentedMatrix::new(a, ColumnVector::zero()).solve().unwrap();
-    println!("{aug:?}");
-    let pf = aug
-        .gen_parametric_form(
-            array::from_fn(|i| VARS[i..=i].to_string()),
-            ["1".to_string()],
-        )
-        .unwrap().map(|f|f.eval(&HashMap::from_iter([("1".to_string(),Function::Constant(1.))])));
-    println!("{pf:?}");
+    let a_li = a - SquareMatrix::ident() * e_val;
+    let a_li2 = a_li*a_li;
+    println!("{:?}", AugmentedMatrix::new(a_li, a_li2));
+
+    let nul = a_li.nullspace();
+    println!("{nul:?} = nullspace");
+
+    let nul = a_li2.nullspace();
+    println!("{nul:?} = nullspace");
+
+    println!("{:?}", Span::new([matrix!(1;0;0),a_li*matrix!(1;0;0), a_li2*matrix!(1;0;0)]));
 
     // let m = matrix!(-6,2;1,-1);
     // let nm2 = m * m * r!(-1);

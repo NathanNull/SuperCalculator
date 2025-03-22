@@ -1,11 +1,16 @@
-use std::array;
+use std::{array, collections::HashMap};
 
 use rand::rngs::ThreadRng;
 
 use crate::{
     augmented_matrix::AugmentedMatrix,
     debug_multi::DebugMulti,
-    ring_field::{Field, Ring}, vector_space::span::{Span, Basis},
+    function::{Function, VARS},
+    ring_field::{Field, Ring},
+    vector_space::{
+        span::{Basis, Span},
+        Vector,
+    },
 };
 
 mod ops;
@@ -64,12 +69,79 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         Matrix { entries }
     }
 
-    pub fn column_space(&self) -> Basis<TEntry, R, ColumnVector<TEntry, R>> where TEntry: Field {
+    pub fn column_space(&self) -> Basis<TEntry, R, ColumnVector<TEntry, R>>
+    where
+        TEntry: Field,
+    {
         Span::new(self.columns()).basis()
     }
 
-    pub fn rank(&self) -> usize where TEntry: Field {
+    pub fn rank(&self) -> usize
+    where
+        TEntry: Field,
+    {
         self.column_space().dimension()
+    }
+
+    pub fn nullspace(&self) -> Basis<TEntry, C, ColumnVector<TEntry, C>>
+    where
+        TEntry: Field,
+    {
+        let sol = AugmentedMatrix::new(self.clone(), ColumnVector::zero())
+            .solve()
+            .unwrap()
+            .gen_parametric_form(
+                array::from_fn(|i| VARS[i..=i].to_string()),
+                ["1".to_string()],
+            )
+            .unwrap()
+            .map(|f| f.eval(&HashMap::from_iter([("1".to_string(), Function::unit())])));
+        let mut vars = [(); R].map(|_| "".to_string());
+        let mut n = 0;
+        for v in sol.iter().map(|s| s.variables()).flatten() {
+            if !vars.contains(&v) {
+                vars[n] = v;
+                n += 1;
+            }
+        }
+        Span::new(vars.each_ref().map(|var| {
+            ColumnVector::v_new(sol.each_ref().map(|v| {
+                let a = v.eval(&HashMap::from_iter(vars.each_ref().map(|tvar| {
+                    (
+                        tvar.clone(),
+                        if tvar == var {
+                            Function::Variable(tvar.clone())
+                        } else {
+                            Function::Constant(TEntry::additive_ident())
+                        },
+                    )
+                })));
+                let a_str = format!("{a:?}");
+                if let Function::Product(box1, box2) = a {
+                    match (*box1, *box2) {
+                        (Function::Constant(c), Function::Variable(v))
+                        | (Function::Variable(v), Function::Constant(c))
+                            if v == *var =>
+                        {
+                            c
+                        }
+
+                        _ => panic!("Unrecognized form {a_str}"),
+                    }
+                } else if a == Function::Constant(TEntry::additive_ident()) {
+                    TEntry::additive_ident()
+                } else if a == Function::Variable(var.clone()) {
+                    TEntry::multiplicative_ident()
+                } else {
+                    panic!("Unrecognized form {a_str}");
+                }
+            }))
+        }))
+        .basis()
+    }
+
+    fn nullity(&self) -> usize where TEntry: Field {
+        self.nullspace().dimension()
     }
 }
 
@@ -135,9 +207,9 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
         Self::ident()
     }
 
-    fn generate(rng: &mut ThreadRng) -> Self {
+    fn generate(rng: &mut ThreadRng, basic: bool) -> Self {
         Self::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::generate(rng))
+            array::from_fn(|_| TEntry::generate(rng, basic))
         }))
     }
 }

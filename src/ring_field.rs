@@ -15,7 +15,7 @@ pub trait Ring:
     fn negate(&self) -> Self;
     fn additive_ident() -> Self;
     fn multiplicative_ident() -> Self;
-    fn generate(rng: &mut ThreadRng) -> Self;
+    fn generate(rng: &mut ThreadRng, basic: bool) -> Self;
 }
 
 impl Ring for i32 {
@@ -39,7 +39,7 @@ impl Ring for i32 {
         1
     }
 
-    fn generate(rng: &mut ThreadRng) -> Self {
+    fn generate(rng: &mut ThreadRng, basic: bool) -> Self {
         rng.random()
     }
 }
@@ -68,8 +68,13 @@ impl Ring for f64 {
         1.
     }
 
-    fn generate(rng: &mut ThreadRng) -> Self {
-        rng.random::<Self>() % 1024.
+    fn generate(rng: &mut ThreadRng, basic: bool) -> Self {
+        if basic {
+            const OPTIONS: [f64; 4]= [1.,0.,2.,-1.];
+            OPTIONS[rng.random_range(..OPTIONS.len())]
+        } else {
+            rng.random::<Self>() % 1024.
+        }
     }
 }
 
