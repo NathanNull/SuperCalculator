@@ -6,8 +6,6 @@ use crate::matrix::Matrix;
 
 use super::*;
 
-pub const MAX_SPAN_SIZE: usize = 32;
-
 pub struct Span<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize> {
     vectors: [TVec; VECS],
     _entry_t: PhantomData<TEntry>,
@@ -22,11 +20,6 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
     Span<TEntry, DIM, TVec, VECS>
 {
     pub fn new(vectors: [TVec; VECS]) -> Self {
-        assert!(
-            vectors.len() <= MAX_SPAN_SIZE,
-            "Can't have more than {MAX_SPAN_SIZE} vectors (found {})",
-            vectors.len()
-        );
         Self {
             vectors,
             _entry_t: PhantomData,

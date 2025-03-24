@@ -1,14 +1,11 @@
 #![feature(generic_const_exprs)]
+#![allow(incomplete_features)]
 
 use std::{array, collections::HashMap};
 
-use augmented_matrix::AugmentedMatrix;
+use matrix::{ColumnVector, Matrix};
 use num::cyclic_group::ZMod;
-use function::{Function, VARS};
-use matrix::{ColumnVector, Matrix, SquareMatrix};
-use num::rational::Rational;
-use ring_field::{Ring, TrueDiv};
-use vector_space::{span::Span, Vector};
+use ring_field::Ring;
 
 mod augmented_matrix;
 mod debug_multi;

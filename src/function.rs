@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, VecDeque},
-    ops::Add,
+    ops::{Add, Mul, Sub},
     usize,
 };
 
@@ -248,6 +248,60 @@ impl<TEntry: Ring> Function<TEntry> {
     }
 }
 
+impl<TEntry: Ring> Add for Function<TEntry> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::Sum(Box::new(self), Box::new(rhs)).eval(&HashMap::new())
+    }
+}
+
+impl<TEntry: Ring> Add<TEntry> for Function<TEntry> {
+    type Output = Self;
+
+    fn add(self, rhs: TEntry) -> Self::Output {
+        Self::Sum(Box::new(self), Box::new(Self::Constant(rhs))).eval(&HashMap::new())
+    }
+}
+
+impl<TEntry: Ring> Sub for Function<TEntry> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self::Sum(
+            Box::new(self),
+            Box::new(Function::Product(
+                Box::new(Self::Constant(TEntry::multiplicative_ident().negate())),
+                Box::new(rhs),
+            )),
+        ).eval(&HashMap::new())
+    }
+}
+
+impl<TEntry: Ring> Sub<TEntry> for Function<TEntry> {
+    type Output = Self;
+
+    fn sub(self, rhs: TEntry) -> Self::Output {
+        Self::Sum(Box::new(self), Box::new(Self::Constant(rhs.negate()))).eval(&HashMap::new())
+    }
+}
+
+impl<TEntry: Ring> Mul for Function<TEntry> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self::Product(Box::new(self), Box::new(rhs)).eval(&HashMap::new())
+    }
+}
+
+impl<TEntry: Ring> Mul<TEntry> for Function<TEntry> {
+    type Output = Self;
+
+    fn mul(self, rhs: TEntry) -> Self::Output {
+        Self::Product(Box::new(self), Box::new(Self::Constant(rhs))).eval(&HashMap::new())
+    }
+}
+
 impl<TEntry: Ring> std::fmt::Debug for Function<TEntry> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.debug(usize::MAX))
@@ -327,13 +381,5 @@ impl<TEntry: Ring> Equation<TEntry> {
 impl<TEntry: Ring> std::fmt::Debug for Equation<TEntry> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?} = {:?}", self.lhs, self.rhs)
-    }
-}
-
-impl<TEntry: Ring> Add for Function<TEntry> {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self::Sum(Box::new(self), Box::new(rhs)).eval(&HashMap::new())
     }
 }
