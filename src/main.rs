@@ -3,20 +3,19 @@
 use std::{array, collections::HashMap};
 
 use augmented_matrix::AugmentedMatrix;
-use cyclic_group::ZMod;
+use num::cyclic_group::ZMod;
 use function::{Function, VARS};
 use matrix::{ColumnVector, Matrix, SquareMatrix};
-use rational::Rational;
+use num::rational::Rational;
 use ring_field::{Ring, TrueDiv};
 use vector_space::{span::Span, Vector};
 
 mod augmented_matrix;
-mod cyclic_group;
 mod debug_multi;
 mod function;
 mod if_trait;
 mod matrix;
-mod rational;
+mod num;
 mod ring_field;
 mod vector_space;
 
