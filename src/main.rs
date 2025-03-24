@@ -3,6 +3,7 @@
 use std::{array, collections::HashMap};
 
 use augmented_matrix::AugmentedMatrix;
+use cyclic_group::ZMod;
 use function::{Function, VARS};
 use matrix::{ColumnVector, Matrix, SquareMatrix};
 use rational::Rational;
@@ -10,6 +11,7 @@ use ring_field::{Ring, TrueDiv};
 use vector_space::{span::Span, Vector};
 
 mod augmented_matrix;
+mod cyclic_group;
 mod debug_multi;
 mod function;
 mod if_trait;
@@ -34,23 +36,67 @@ macro_rules! fmatrix {
         } ),* ] ),* ])
     };
 }
+macro_rules! zmatrix {
+    (<$n: literal> $( $( $num:literal ),+ );+) => {
+        Matrix::new([ $( [ $( {
+            ZMod::<$n>::new($num as usize)
+        } ),* ] ),* ])
+    };
+}
+
+const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
 
 fn main() -> Result<(), &'static str> {
-    // 37.815799
-    let a = matrix!(-3,3,6;-4,5,4;-4,2,7);
-    let e_val = r!(3);
+    let alphabet_map: HashMap<char, usize> =
+        HashMap::from_iter(ALPHABET.chars().enumerate().map(|(i, c)| (c, i)));
+    let msg = "hsvpqbuscvfylqoq"
+        .chars()
+        .map(|c| *alphabet_map.get(&c).expect("Invalid character"))
+        .collect::<Vec<_>>();
+    let encrypt = zmatrix!(<26>3,5;4,7);
+    const BLOCK_SIZE: usize = 2;
 
-    let a_li = a - SquareMatrix::ident() * e_val;
-    let a_li2 = a_li*a_li;
-    println!("{:?}", AugmentedMatrix::new(a_li, a_li2));
+    if let Some(decrypt) = encrypt.try_inverse() {
+        let mut chars = vec![];
+        println!("{decrypt:?}: inverse");
+        for c in msg.chunks(BLOCK_SIZE) {
+            let c_arr = array::from_fn::<_, BLOCK_SIZE, _>(|i| ZMod::<26>::new(c[i]));
+            let c_col = ColumnVector::v_new(c_arr);
+            let plaintext_col = decrypt * c_col;
+            for [e] in plaintext_col.entries {
+                let pos = e.into();
+                chars.push(&ALPHABET[pos..=pos]);
+            }
+        }
+        println!("Output: {}", chars.join(""));
+    } else {
+        println!(
+            "Couldn't take the inverse (det={:?})",
+            encrypt.determinant()
+        );
+    }
 
-    let nul = a_li.nullspace();
-    println!("{nul:?} = nullspace");
+    // let a = matrix!(-3,3,6;-4,5,4;-4,2,7);
+    // let e_val = r!(3);
 
-    let nul = a_li2.nullspace();
-    println!("{nul:?} = nullspace");
+    // let a_li = a - SquareMatrix::ident() * e_val;
+    // let a_li2 = a_li * a_li;
+    // println!("{:?}", AugmentedMatrix::new(a_li, a_li2));
 
-    println!("{:?}", Span::new([matrix!(1;0;0),a_li*matrix!(1;0;0), a_li2*matrix!(1;0;0)]));
+    // let nul = a_li.nullspace();
+    // println!("{nul:?} = nullspace");
+
+    // let nul = a_li2.nullspace();
+    // println!("{nul:?} = nullspace");
+
+    // println!(
+    //     "{:?}",
+    //     Span::new([
+    //         matrix!(1;0;0),
+    //         a_li * matrix!(1;0;0),
+    //         a_li2 * matrix!(1;0;0)
+    //     ])
+    // );
 
     // let m = matrix!(-6,2;1,-1);
     // let nm2 = m * m * r!(-1);
