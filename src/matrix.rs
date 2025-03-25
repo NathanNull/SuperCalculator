@@ -8,7 +8,7 @@ use crate::{
     function::{Function, VARS},
     ring_field::{Field, Ring},
     vector_space::{
-        span::{Basis, Span},
+        subspace::{Basis, Subspace},
         Vector,
     },
 };
@@ -73,7 +73,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     where
         TEntry: Field,
     {
-        Span::new(self.columns()).basis()
+        Subspace::new(self.columns()).basis()
     }
 
     pub fn rank(&self) -> usize
@@ -104,7 +104,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
                 n += 1;
             }
         }
-        Span::new(vars.each_ref().map(|var| {
+        Subspace::new(vars.each_ref().map(|var| {
             ColumnVector::v_new(sol.each_ref().map(|v| {
                 let a = v.eval(&HashMap::from_iter(vars.each_ref().map(|tvar| {
                     (

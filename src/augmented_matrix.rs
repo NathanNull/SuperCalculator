@@ -76,6 +76,26 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
 
         Some(arr)
     }
+
+    pub fn consistent(&self) -> Option<bool> {
+        if !self.left_matrix.is_rref() {
+            return None;
+        }
+        for row in 0..R {
+            if self.left_matrix.entries[row]
+                .iter()
+                .find(|v| v != &&TEntry::additive_ident())
+                .is_none()
+                && self.right_matrix.entries[row]
+                    .iter()
+                    .find(|v| v != &&TEntry::additive_ident())
+                    .is_some()
+            {
+                return Some(false);
+            }
+        }
+        Some(true)
+    }
 }
 
 fn map_row_to_function<TEntry: Ring, const L: usize>(

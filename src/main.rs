@@ -5,7 +5,9 @@ use std::{array, collections::HashMap};
 
 use matrix::{ColumnVector, Matrix};
 use num::cyclic_group::ZMod;
+use num::rational::Rational;
 use ring_field::Ring;
+use vector_space::subspace::Subspace;
 
 mod augmented_matrix;
 mod debug_multi;
@@ -40,37 +42,41 @@ macro_rules! zmatrix {
     };
 }
 
-const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
+// const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
 
 fn main() -> Result<(), &'static str> {
-    let alphabet_map: HashMap<char, usize> =
-        HashMap::from_iter(ALPHABET.chars().enumerate().map(|(i, c)| (c, i)));
-    let msg = "hsvpqbuscvfylqoq"
-        .chars()
-        .map(|c| *alphabet_map.get(&c).expect("Invalid character"))
-        .collect::<Vec<_>>();
-    let encrypt = zmatrix!(<26>3,5;4,7);
-    const BLOCK_SIZE: usize = 2;
+    let m = matrix!(1,0,0;0,1,0;0,0,0);
+    let s = Subspace::new(m.columns());
+    println!("{}", s.contains(matrix!(1;0;0)));
 
-    if let Some(decrypt) = encrypt.try_inverse() {
-        let mut chars = vec![];
-        println!("{decrypt:?}: inverse");
-        for c in msg.chunks(BLOCK_SIZE) {
-            let c_arr = array::from_fn::<_, BLOCK_SIZE, _>(|i| ZMod::<26>::new(c[i]));
-            let c_col = ColumnVector::v_new(c_arr);
-            let plaintext_col = decrypt * c_col;
-            for [e] in plaintext_col.entries {
-                let pos = e.into();
-                chars.push(&ALPHABET[pos..=pos]);
-            }
-        }
-        println!("Output: {}", chars.join(""));
-    } else {
-        println!(
-            "Couldn't take the inverse (det={:?})",
-            encrypt.determinant()
-        );
-    }
+    // let alphabet_map: HashMap<char, usize> =
+    //     HashMap::from_iter(ALPHABET.chars().enumerate().map(|(i, c)| (c, i)));
+    // let msg = "hsvpqbuscvfylqoq"
+    //     .chars()
+    //     .map(|c| *alphabet_map.get(&c).expect("Invalid character"))
+    //     .collect::<Vec<_>>();
+    // let encrypt = zmatrix!(<26>3,5;4,7);
+    // const BLOCK_SIZE: usize = 2;
+
+    // if let Some(decrypt) = encrypt.try_inverse() {
+    //     let mut chars = vec![];
+    //     println!("{decrypt:?}: inverse");
+    //     for c in msg.chunks(BLOCK_SIZE) {
+    //         let c_arr = array::from_fn::<_, BLOCK_SIZE, _>(|i| ZMod::<26>::new(c[i]));
+    //         let c_col = ColumnVector::v_new(c_arr);
+    //         let plaintext_col = decrypt * c_col;
+    //         for [e] in plaintext_col.entries {
+    //             let pos = e.into();
+    //             chars.push(&ALPHABET[pos..=pos]);
+    //         }
+    //     }
+    //     println!("Output: {}", chars.join(""));
+    // } else {
+    //     println!(
+    //         "Couldn't take the inverse (det={:?})",
+    //         encrypt.determinant()
+    //     );
+    // }
 
     // let a = matrix!(-3,3,6;-4,5,4;-4,2,7);
     // let e_val = r!(3);

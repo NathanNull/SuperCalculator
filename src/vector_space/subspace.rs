@@ -1,23 +1,23 @@
+use rand::rng;
 use std::marker::PhantomData;
 
-use rand::rng;
-
-use crate::matrix::Matrix;
+use crate::{augmented_matrix::AugmentedMatrix, matrix::Matrix};
 
 use super::*;
 
-pub struct Span<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize> {
+pub struct Subspace<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize> {
     vectors: [TVec; VECS],
     _entry_t: PhantomData<TEntry>,
 }
 
+#[derive(Clone)]
 pub struct Basis<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> {
     vectors: Vec<TVec>,
     _entry_t: PhantomData<TEntry>,
 }
 
 impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize>
-    Span<TEntry, DIM, TVec, VECS>
+    Subspace<TEntry, DIM, TVec, VECS>
 {
     pub fn new(vectors: [TVec; VECS]) -> Self {
         Self {
@@ -42,6 +42,19 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
 
     pub fn sample(&self, basic: bool) -> TVec {
         self.basis().sample(basic)
+    }
+
+    pub fn linearly_independant(&self) -> bool {
+        self.vectors.len() == self.basis().vectors.len()
+    }
+
+    pub fn contains(&self, vec: TVec) -> bool {
+        let m = Matrix::new_columns(self.vectors.map(|v| v.to_column().as_array()));
+        if let Some(aug) = AugmentedMatrix::new(m, vec.to_column()).solve() {
+            aug.consistent().unwrap()
+        } else {
+            false
+        }
     }
 }
 
@@ -68,7 +81,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
 }
 
 impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize> std::fmt::Debug
-    for Span<TEntry, DIM, TVec, VECS>
+    for Subspace<TEntry, DIM, TVec, VECS>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", Basis::new(self.vectors.to_vec()))
@@ -80,7 +93,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> std::fmt::Debug
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let res: Vec<Vec<String>> = self.vectors.iter().map(|c| c.lines()).collect();
-        let lines = self.vectors[0].lines().len();
+        let lines = TVec::zero().lines().len();
         for l in 0..lines {
             write!(
                 f,
@@ -102,6 +115,9 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> std::fmt::Debug
                     " "
                 };
                 write!(f, "{entry}{comma}")?;
+            }
+            if self.vectors.len() == 0 {
+                write!(f, " ")?;
             }
             write!(
                 f,

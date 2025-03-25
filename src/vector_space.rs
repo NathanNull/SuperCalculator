@@ -6,7 +6,7 @@ use crate::{
     debug_multi::DebugMulti, if_trait::{If, True}, matrix::{ColumnVector, SquareMatrix}, ring_field::{Field, Ring}
 };
 
-pub mod span;
+pub mod subspace;
 
 pub trait Vector<TEntry: Field, const DIMENSION: usize>:
     Add<Output = Self> + Mul<TEntry, Output = Self> + Copy + PartialEq + DebugMulti + Sized
