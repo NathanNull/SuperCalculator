@@ -6,7 +6,7 @@ use std::{array, collections::HashMap};
 use matrix::{ColumnVector, Matrix};
 use num::cyclic_group::ZMod;
 use num::rational::Rational;
-use ring_field::Ring;
+use ring_field::{Ring, Real};
 use vector_space::subspace::Subspace;
 
 mod augmented_matrix;
@@ -30,7 +30,7 @@ macro_rules! matrix {
 macro_rules! fmatrix {
     ($( $( $num:literal ),+ );+ ) => {
         Matrix::new([ $( [ $( {
-            $num as f64
+            Real($num as f64)
         } ),* ] ),* ])
     };
 }

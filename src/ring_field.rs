@@ -55,7 +55,7 @@ pub trait Field: Ring + TrueDiv {}
 impl<T: Ring + TrueDiv> Field for T {}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Real(f64);
+pub struct Real(f64);
 
 impl Eq for Real {}
 
