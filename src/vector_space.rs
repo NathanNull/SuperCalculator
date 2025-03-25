@@ -1,15 +1,22 @@
-use std::{array, ops::{Add, Mul}};
+use std::{
+    array,
+    hash::Hash,
+    ops::{Add, Mul},
+};
 
 use rand::rngs::ThreadRng;
 
 use crate::{
-    debug_multi::DebugMulti, if_trait::{If, True}, matrix::{ColumnVector, SquareMatrix}, ring_field::{Field, Ring}
+    debug_multi::DebugMulti,
+    if_trait::{If, True},
+    matrix::{ColumnVector, SquareMatrix},
+    ring_field::{Convenient, Field},
 };
 
 pub mod subspace;
 
 pub trait Vector<TEntry: Field, const DIMENSION: usize>:
-    Add<Output = Self> + Mul<TEntry, Output = Self> + Copy + PartialEq + DebugMulti + Sized
+    Add<Output = Self> + Mul<TEntry, Output = Self> + Convenient + DebugMulti
 {
     fn to_column(&self) -> ColumnVector<TEntry, DIMENSION>;
     fn zero() -> Self;

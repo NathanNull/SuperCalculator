@@ -1,5 +1,11 @@
+use anymap::{any::Any, Map};
 use rand::rng;
-use std::marker::PhantomData;
+use std::{
+    collections::HashMap,
+    hash::Hash,
+    marker::PhantomData,
+    sync::{LazyLock, Mutex},
+};
 
 use crate::{augmented_matrix::AugmentedMatrix, matrix::Matrix};
 
@@ -27,6 +33,30 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
     }
 
     pub fn basis(&self) -> Basis<TEntry, DIM, TVec> {
+        static CACHE: LazyLock<Mutex<Map<dyn Any + Send + Sync>>> =
+            LazyLock::new(|| Mutex::new(Map::new()));
+        if let Ok(mut cache) = CACHE.try_lock() {
+            let t_cache = if let Some(t_cache) =
+                cache.get_mut::<HashMap<[TVec; VECS], Basis<TEntry, DIM, TVec>>>()
+            {
+                t_cache
+            } else {
+                cache.insert(HashMap::<[TVec; VECS], Basis<TEntry, DIM, TVec>>::new());
+                cache.get_mut().unwrap()
+            };
+            if let Some(cached) = t_cache.get(&self.vectors) {
+                return cached.clone();
+            } else {
+                let b = self.basis_raw();
+                t_cache.insert(self.vectors, b.clone());
+                return b;
+            }
+        }
+        // Couldn't get cache lock so just do it normally
+        self.basis_raw()
+    }
+
+    fn basis_raw(&self) -> Basis<TEntry, DIM, TVec> {
         let mut m = Matrix::new_columns(self.vectors.map(|v| v.to_column().as_array()));
         m.reduce_to_ref();
         let mut basis = vec![];

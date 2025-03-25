@@ -7,7 +7,7 @@ use rand::{rngs::ThreadRng, Rng};
 
 use crate::ring_field::{Ring, TrueDiv};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Rational {
     positive: bool,
     num: u64,

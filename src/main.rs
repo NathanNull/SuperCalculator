@@ -47,7 +47,7 @@ macro_rules! zmatrix {
 fn main() -> Result<(), &'static str> {
     let m = matrix!(1,0,0;0,1,0;0,0,0);
     let s = Subspace::new(m.columns());
-    println!("{}", s.contains(matrix!(1;0;0)));
+    println!("{}", s.contains(matrix!(1;0;1)));
 
     // let alphabet_map: HashMap<char, usize> =
     //     HashMap::from_iter(ALPHABET.chars().enumerate().map(|(i, c)| (c, i)));

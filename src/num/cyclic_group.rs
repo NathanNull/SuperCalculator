@@ -7,7 +7,7 @@ use crate::{
     ring_field::{Ring, TrueDiv},
 };
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ZMod<const N: usize> {
     val: usize,
 }
