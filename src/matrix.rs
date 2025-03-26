@@ -140,7 +140,10 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         .basis()
     }
 
-    fn nullity(&self) -> usize where TEntry: Field {
+    fn nullity(&self) -> usize
+    where
+        TEntry: Field,
+    {
         self.nullspace().dimension()
     }
 }
@@ -182,11 +185,19 @@ impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
 
 impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
     fn try_inverse(&self) -> Option<Self> {
-        if let Some(aug) = AugmentedMatrix::new(*self, Self::ident()).solve() {
-            if aug.left_matrix == Self::ident() {
-                Some(aug.right_matrix)
+        if let Some(inv) = self.determinant().try_inverse() {
+            if let Some(aug) = AugmentedMatrix::new(*self, Self::ident()).solve() {
+                if aug.left_matrix == Self::ident() {
+                    Some(aug.right_matrix)
+                } else {
+                    unreachable!("Determinant was invertible but matrix reduces to non-identity")
+                }
             } else {
-                None
+                let unsizedmat = self.into_unsized();
+                let c: SquareMatrix<TEntry, N> = SquareMatrix::new(array::from_fn(|r| {
+                    array::from_fn(|c| unsizedmat.cofactor(c,r)) // transpose
+                }));
+                Some(c*inv)
             }
         } else {
             None
@@ -241,23 +252,25 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
             return *self.entries[0][0];
         }
         let mut res = TEntry::additive_ident();
-        let neg_1 = TEntry::multiplicative_ident().negate();
-        let mut sign = neg_1;
         for col in 0..self.size.0 {
-            sign = sign * neg_1;
-            let minor = self.minor(0, col);
-            let m = minor.determinant();
-            res = res + (m * (sign * *self.entries[0][col]));
+            let cofactor = self.cofactor(0, col);
+            res = res + cofactor * *self.entries[0][col];
         }
         res
     }
 
-    pub fn minor(&self, r: usize, c: usize) -> UnsizedMatrix<TEntry> {
+    pub fn cofactor(&self, r: usize, c: usize) -> TEntry {
         assert!(
             r < self.size.0 && c < self.size.1,
             "Row {r} and column {c} must be within size of matrix {:?}",
             self.size
         );
+
+        let mut sign = TEntry::multiplicative_ident();
+        if (r+c)%2 == 1 {
+            sign = sign.negate();
+        }
+
         let mut entries = vec![];
         for rp in 0..self.size.0 {
             if rp == r {
@@ -273,7 +286,7 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
             }
             entries.push(m_row);
         }
-        UnsizedMatrix::new(entries)
+        UnsizedMatrix::new(entries).determinant() * sign
     }
 }
 
