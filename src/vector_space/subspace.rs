@@ -2,7 +2,6 @@ use anymap::{any::Any, Map};
 use rand::rng;
 use std::{
     collections::HashMap,
-    hash::Hash,
     marker::PhantomData,
     sync::{LazyLock, Mutex},
 };

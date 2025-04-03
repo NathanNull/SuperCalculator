@@ -103,7 +103,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
                 self.swap(nonzero_row, pivot_row);
                 for i in pivot_row + 1..R {
                     // If you can't divide, you probably can't reduce the matrix properly.
-                    println!("Trying inverse of {:?}", self.entries[pivot_row][pivot_col]);
+                    //println!("Trying inverse of {:?}", self.entries[pivot_row][pivot_col]);
                     let mult = (self.entries[i][pivot_col]
                         * self.entries[pivot_row][pivot_col].try_inverse().ok_or(())?)
                     .negate();

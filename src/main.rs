@@ -1,14 +1,16 @@
-#![feature(generic_const_exprs)]
+#![feature(generic_const_exprs, iter_array_chunks)]
 #![allow(incomplete_features)]
 
 use std::{array, collections::HashMap};
 
+use applications::hill_cipher::{decode, try_break_code};
 use matrix::{ColumnVector, Matrix};
 use num::cyclic_group::ZMod;
 use num::rational::Rational;
-use ring_field::{Ring, Real};
+use ring_field::{Real, Ring};
 use vector_space::subspace::Subspace;
 
+mod applications;
 mod augmented_matrix;
 mod debug_multi;
 mod function;
@@ -19,6 +21,7 @@ mod ring_field;
 mod vector_space;
 
 /// Example: ```matrix!(1,2,3;4,5,6;7,8,9)```
+#[macro_export]
 macro_rules! matrix {
     ($( $( $num:literal $(/$den:literal)? ),+ );+ ) => {
         Matrix::new([ $( [ $( {
@@ -27,6 +30,7 @@ macro_rules! matrix {
     };
 }
 
+#[macro_export]
 macro_rules! fmatrix {
     ($( $( $num:literal ),+ );+ ) => {
         Matrix::new([ $( [ $( {
@@ -34,6 +38,8 @@ macro_rules! fmatrix {
         } ),* ] ),* ])
     };
 }
+
+#[macro_export]
 macro_rules! zmatrix {
     (<$n: literal> $( $( $num:literal ),+ );+) => {
         Matrix::new([ $( [ $( {
@@ -42,41 +48,16 @@ macro_rules! zmatrix {
     };
 }
 
-const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
-
 fn main() -> Result<(), &'static str> {
+    try_break_code::<3>(
+        &"ZSALFRLKOVDFWAUBCO".to_lowercase(),
+        &"CRYPTOGRAPHYISCOOL".to_lowercase(),
+    );
+    decode(&"NTWEVJFCMTYIMHQZ".to_lowercase(), zmatrix!(<26>6,3;9,8));
+    Ok(())
     // let m = matrix!(1,0,0;0,1,0;0,0,0);
     // let s = Subspace::new(m.columns());
     // println!("{}", s.contains(matrix!(1;0;1)));
-
-    let alphabet_map: HashMap<char, usize> =
-        HashMap::from_iter(ALPHABET.chars().enumerate().map(|(i, c)| (c, i)));
-    let msg = "ntwevjfcmtyimhqz"
-        .chars()
-        .map(|c| *alphabet_map.get(&c).expect("Invalid character"))
-        .collect::<Vec<_>>();
-    let encrypt = zmatrix!(<26>6,3;9,8);
-    const BLOCK_SIZE: usize = 2;
-
-    if let Some(decrypt) = encrypt.try_inverse() {
-        let mut chars = vec![];
-        println!("{decrypt:?}: inverse");
-        for c in msg.chunks(BLOCK_SIZE) {
-            let c_arr = array::from_fn::<_, BLOCK_SIZE, _>(|i| ZMod::<26>::new(c[i]));
-            let c_col = ColumnVector::v_new(c_arr);
-            let plaintext_col = decrypt * c_col;
-            for [e] in plaintext_col.entries {
-                let pos = e.into();
-                chars.push(&ALPHABET[pos..=pos]);
-            }
-        }
-        println!("Output: {}", chars.join(""));
-    } else {
-        println!(
-            "Couldn't take the inverse (det={:?})",
-            encrypt.determinant()
-        );
-    }
 
     // let a = matrix!(-3,3,6;-4,5,4;-4,2,7);
     // let e_val = r!(3);
@@ -136,18 +117,6 @@ fn main() -> Result<(), &'static str> {
     // );
 
     // println!("{vec:?}: lc");
-
-    // Quadrilateral area. Very useful.
-    // Needs to be counterclockwise I believe, quadrant I->II->III->IV
-    // let vecs = [matrix!(5;9), matrix!(-2;3), matrix!(2;-8), matrix!(9;-2)];
-    // let mut area = r!(0);
-    // for i in 0..4 {
-    //     let j = (i + 1) % vecs.len();
-    //     let m = Matrix::new_columns([vecs[i], vecs[j]].map(|v| v.as_array()));
-    //     println!("Area of slice: {:?}", m.determinant() / r!(2));
-    //     area = area + m.determinant() / r!(2);
-    // }
-    // println!("Area is {area:?}");
 
     // Finding eigenvectors from eigenvalues
     // let m = matrix!(2,5,5;-4,-7,-4;-1,-1,-4);
@@ -230,6 +199,4 @@ fn main() -> Result<(), &'static str> {
     // } else {
     //     println!("No")
     // }
-
-    Ok(())
 }
