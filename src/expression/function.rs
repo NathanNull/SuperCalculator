@@ -318,10 +318,10 @@ impl<TEntry: Ring> TryInto<Polynomial<TEntry>> for Function<TEntry> {
 
     fn try_into(self) -> Result<Polynomial<TEntry>, Self::Error> {
         match self {
-            Self::Constant(c) => Ok(Polynomial::new(vec![Term::new(c, &mut [].into_iter())])),
+            Self::Constant(c) => Ok(Polynomial::new(vec![Term::new(c, vec![])])),
             Self::Variable(v) => Ok(Polynomial::new(vec![Term::new(
                 TEntry::multiplicative_ident(),
-                &mut [(v, 1)].into_iter(),
+                vec![(v, 1)],
             )])),
             Self::Sum(lhs, rhs) => Ok(TryInto::<Polynomial<_>>::try_into(*lhs)?
                 + TryInto::<Polynomial<_>>::try_into(*rhs)?),

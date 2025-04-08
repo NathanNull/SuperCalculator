@@ -4,6 +4,7 @@
 use std::{array, collections::HashMap};
 
 use applications::hill_cipher::{decode, try_break_code};
+use expression::polynomial::{Polynomial, Term};
 use matrix::{ColumnVector, Matrix};
 use num::cyclic_group::ZMod;
 use num::rational::Rational;
@@ -49,11 +50,21 @@ macro_rules! zmatrix {
 }
 
 fn main() -> Result<(), &'static str> {
-    try_break_code::<3>(
-        &"ZSALFRLKOVDFWAUBCO".to_lowercase(),
-        &"CRYPTOGRAPHYISCOOL".to_lowercase(),
-    );
-    decode(&"NTWEVJFCMTYIMHQZ".to_lowercase(), zmatrix!(<26>6,3;9,8));
+    // try_break_code::<3>(
+    //     &"ZSALFRLKOVDFWAUBCO".to_lowercase(),
+    //     &"CRYPTOGRAPHYISCOOL".to_lowercase(),
+    // );
+    // decode(&"NTWEVJFCMTYIMHQZ".to_lowercase(), zmatrix!(<26>6,3;9,8));
+    let x = "x".to_string();
+    //x^4 + 10 x^3 + 35 x^2 + 50 x + 24
+    let p = Polynomial::new(vec![
+        Term::new(1.into(), vec![(x.clone(), 4)]),
+        Term::new(10.into(), vec![(x.clone(), 3)]),
+        Term::new(35.into(), vec![(x.clone(), 2)]),
+        Term::new(50.into(), vec![(x.clone(), 1)]),
+        Term::new(24.into(), vec![]),
+    ]);
+    println!("Zeros of {p:?} are {:?}", p.zeros());
     Ok(())
     // let m = matrix!(1,0,0;0,1,0;0,0,0);
     // let s = Subspace::new(m.columns());

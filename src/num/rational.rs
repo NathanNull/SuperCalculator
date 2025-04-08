@@ -32,16 +32,28 @@ impl Rational {
         if num == 0 {
             return Self::additive_ident();
         }
-        let factor = gcd(num, den);
+        let factor = gcf(num, den);
         Self {
             positive,
             num: num / factor,
             den: den / factor,
         }
     }
+
+    pub fn num(&self) -> u64 {
+        self.num
+    }
+
+    pub fn den(&self) -> u64 {
+        self.den
+    }
+
+    pub fn positive(&self) -> bool {
+        self.positive
+    }
 }
 
-pub fn gcd(mut u: u64, mut v: u64) -> u64 {
+pub fn gcf(mut u: u64, mut v: u64) -> u64 {
     // Base cases: gcd(n, 0) = gcd(0, n) = n
     if u == 0 {
         return v;
