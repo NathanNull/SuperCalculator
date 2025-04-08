@@ -6,6 +6,8 @@ use std::{
 
 const ALWAYS_BRACKET: bool = false;
 
+use rand::Rng;
+
 use crate::ring_field::Ring;
 
 use super::polynomial::{Polynomial, Term};
@@ -333,22 +335,36 @@ impl<TEntry: Ring> TryInto<Polynomial<TEntry>> for Function<TEntry> {
 
 impl<TEntry: Ring> Ring for Function<TEntry> {
     fn try_inverse(&self) -> Option<Self> {
-        todo!()
+        Some(Self::Inverse(Box::new(self.clone())).eval(&HashMap::new()))
     }
 
     fn negate(&self) -> Self {
-        todo!()
+        Self::Product(Box::new(Self::Constant(TEntry::multiplicative_ident().negate())), Box::new(self.clone()))
     }
 
     fn additive_ident() -> Self {
-        todo!()
+        Self::Constant(TEntry::additive_ident())
     }
 
     fn multiplicative_ident() -> Self {
-        todo!()
+        Self::Constant(TEntry::multiplicative_ident())
     }
 
     fn generate(rng: &mut rand::prelude::ThreadRng, basic: bool) -> Self {
-        todo!()
+        if rng.random_bool(if basic {0.8} else {0.2}) {
+            if rng.random_bool(0.5) {
+                Self::Constant(TEntry::generate(rng, basic))
+            } else {
+                let v = rng.random_range(0..VARS.len());
+                Self::Variable(VARS[v..v].to_string())
+            }
+        } else {
+            match rng.random_range(0..3) {
+                0 => Self::Sum(Box::new(Self::generate(rng, basic)), Box::new(Self::generate(rng, basic))),
+                1 => Self::Product(Box::new(Self::generate(rng, basic)), Box::new(Self::generate(rng, basic))),
+                2 => Self::Inverse(Box::new(Self::generate(rng, basic))),
+                _ => unreachable!("how tho"),
+            }
+        }
     }
 }

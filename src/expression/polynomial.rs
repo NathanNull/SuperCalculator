@@ -3,9 +3,11 @@ use std::{
     ops::{Add, Mul, Sub},
 };
 
+use rand::Rng;
+
 use crate::ring_field::Ring;
 
-use super::function::Function;
+use super::function::{Function, VARS};
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub struct Term<TEntry: Ring>(TEntry, Vec<(String, usize)>);
@@ -129,22 +131,36 @@ impl<TEntry: Ring> Mul for Polynomial<TEntry> {
 
 impl<TEntry: Ring> Ring for Polynomial<TEntry> {
     fn try_inverse(&self) -> Option<Self> {
-        todo!()
+        None
     }
 
     fn negate(&self) -> Self {
-        todo!()
+        Self::new(
+            self.entries
+                .iter()
+                .map(|e| Term::new(e.0.negate(), &mut e.1.clone().into_iter()))
+                .collect(),
+        )
     }
 
     fn additive_ident() -> Self {
-        todo!()
+        Self::new(vec![])
     }
 
     fn multiplicative_ident() -> Self {
-        todo!()
+        Self::new(vec![Term::new(TEntry::multiplicative_ident(), &mut [].into_iter())])
     }
 
     fn generate(rng: &mut rand::prelude::ThreadRng, basic: bool) -> Self {
-        todo!()
+        let mut terms = vec![];
+        for _ in 0..rng.random_range(if basic {1..3} else {2..10}) {
+            let mut vars = vec![];
+            for _ in 0..rng.random_range(if basic {1..2} else {1..4}) {
+                let v = rng.random_range(0..VARS.len());
+                vars.push((VARS[v..v].to_string(), rng.random_range(if basic {1..2} else {1..5})));
+            }
+            terms.push(Term::new(TEntry::generate(rng, basic), &mut vars.into_iter()));
+        }
+        Self::new(terms)
     }
 }
