@@ -47,7 +47,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
                 return cached.clone();
             } else {
                 let b = self.basis_raw();
-                t_cache.insert(self.vectors, b.clone());
+                t_cache.insert(self.vectors.clone(), b.clone());
                 return b;
             }
         }
@@ -56,11 +56,11 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
     }
 
     fn basis_raw(&self) -> Basis<TEntry, DIM, TVec> {
-        let mut m = Matrix::new_columns(self.vectors.map(|v| v.to_column().as_array()));
+        let mut m = Matrix::new_columns(self.vectors.clone().map(|v| v.to_column().as_array()));
         m.reduce_to_ref();
         let mut basis = vec![];
         for pivot in m.pivots() {
-            basis.push(self.vectors[pivot.col]);
+            basis.push(self.vectors[pivot.col].clone());
         }
         Basis::new(basis)
     }
@@ -78,7 +78,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
     }
 
     pub fn contains(&self, vec: TVec) -> bool {
-        let m = Matrix::new_columns(self.vectors.map(|v| v.to_column().as_array()));
+        let m = Matrix::new_columns(self.vectors.clone().map(|v| v.to_column().as_array()));
         if let Some(aug) = AugmentedMatrix::new(m, vec.to_column()).solve() {
             aug.consistent().unwrap()
         } else {
@@ -103,7 +103,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
         let mut res = TVec::zero();
         let mut rng = rng();
         for v in &self.vectors {
-            res = res + *v * TEntry::generate(&mut rng, basic);
+            res = res + v.clone() * TEntry::generate(&mut rng, basic);
         }
         res
     }

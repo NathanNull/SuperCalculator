@@ -5,7 +5,7 @@ use rand::rngs::ThreadRng;
 use crate::{
     augmented_matrix::AugmentedMatrix,
     debug_multi::DebugMulti,
-    function::{Function, VARS},
+    expression::function::{Function, VARS},
     ring_field::{Field, Ring},
     vector_space::{
         subspace::{Basis, Subspace},
@@ -31,10 +31,12 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     }
 
     pub fn transpose(&self) -> Matrix<TEntry, C, R> {
-        let mut t = Matrix::new([[TEntry::additive_ident(); R]; C]);
+        let mut t = Matrix::new(array::from_fn(|_| {
+            array::from_fn(|_| TEntry::additive_ident())
+        }));
         for r in 0..R {
             for c in 0..C {
-                t.entries[c][r] = self.entries[r][c];
+                t.entries[c][r] = self.entries[r][c].clone();
             }
         }
         t
@@ -47,7 +49,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     pub fn scale(&mut self, scalar: TEntry) {
         for r in 0..R {
             for c in 0..C {
-                self.entries[r][c] = self.entries[r][c] * scalar;
+                self.entries[r][c] = self.entries[r][c].clone() * scalar.clone();
             }
         }
     }
@@ -163,7 +165,7 @@ impl<TEntry: Ring, const N: usize> ColumnVector<TEntry, N> {
     }
 
     pub fn as_array(&self) -> [TEntry; N] {
-        self.entries.map(|r| r[0])
+        self.entries.each_ref().map(|r| r[0].clone())
     }
 }
 
@@ -175,7 +177,9 @@ impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
     }
 
     pub fn ident() -> Self {
-        let mut me = Self::new([[TEntry::additive_ident(); N]; N]);
+        let mut me = Self::new(array::from_fn(|_| {
+            array::from_fn(|_| TEntry::additive_ident())
+        }));
         for (r, row) in me.entries.iter_mut().enumerate() {
             row[r] = TEntry::multiplicative_ident()
         }
@@ -186,7 +190,7 @@ impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
 impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
     fn try_inverse(&self) -> Option<Self> {
         if let Some(inv) = self.determinant().try_inverse() {
-            if let Some(aug) = AugmentedMatrix::new(*self, Self::ident()).solve() {
+            if let Some(aug) = AugmentedMatrix::new(self.clone(), Self::ident()).solve() {
                 if aug.left_matrix == Self::ident() {
                     Some(aug.right_matrix)
                 } else {
@@ -195,9 +199,9 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
             } else {
                 let unsizedmat = self.into_unsized();
                 let c: SquareMatrix<TEntry, N> = SquareMatrix::new(array::from_fn(|r| {
-                    array::from_fn(|c| unsizedmat.cofactor(c,r)) // transpose
+                    array::from_fn(|c| unsizedmat.cofactor(c, r)) // transpose
                 }));
-                Some(c*inv)
+                Some(c * inv)
             }
         } else {
             None
@@ -205,13 +209,15 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
     }
 
     fn negate(&self) -> Self {
-        let mut neg = *self;
+        let mut neg = self.clone();
         neg.scale(TEntry::multiplicative_ident().negate());
         neg
     }
 
     fn additive_ident() -> Self {
-        Self::new([[TEntry::multiplicative_ident(); N]; N])
+        Self::new(array::from_fn(|_| {
+            array::from_fn(|_| TEntry::multiplicative_ident())
+        }))
     }
 
     fn multiplicative_ident() -> Self {
@@ -248,13 +254,13 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
             "Can't take the determinant of a non-square matrix"
         );
         if self.size.1 == 1 {
-            // 2x2 case, ad-bc
-            return *self.entries[0][0];
+            // 1x1 case, just its own value
+            return self.entries[0][0].clone();
         }
         let mut res = TEntry::additive_ident();
         for col in 0..self.size.0 {
             let cofactor = self.cofactor(0, col);
-            res = res + cofactor * *self.entries[0][col];
+            res = res + cofactor * self.entries[0][col].clone();
         }
         res
     }
@@ -267,7 +273,7 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
         );
 
         let mut sign = TEntry::multiplicative_ident();
-        if (r+c)%2 == 1 {
+        if (r + c) % 2 == 1 {
             sign = sign.negate();
         }
 

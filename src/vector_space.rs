@@ -27,7 +27,7 @@ impl<TEntry: Field, const N: usize> Vector<TEntry, N> for ColumnVector<TEntry, N
         self.clone()
     }
     fn zero() -> Self {
-        Self::v_new([TEntry::additive_ident(); N])
+        Self::v_new(array::from_fn(|_| TEntry::additive_ident()))
     }
 }
 
@@ -36,15 +36,17 @@ where
     If<{ N > 1 }>: True,
 {
     fn to_column(&self) -> ColumnVector<TEntry, { N * N }> {
-        let mut entries = [TEntry::additive_ident(); N * N];
+        let mut entries = array::from_fn(|_| TEntry::additive_ident());
         for r in 0..N {
             for c in 0..N {
-                entries[r * N + c] = self.entries[r][c];
+                entries[r * N + c] = self.entries[r][c].clone();
             }
         }
         ColumnVector::v_new(entries)
     }
     fn zero() -> Self {
-        Self::new([[TEntry::additive_ident(); N]; N])
+        Self::new(array::from_fn(|_| {
+            array::from_fn(|_| TEntry::additive_ident())
+        }))
     }
 }

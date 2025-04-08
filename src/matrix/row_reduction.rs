@@ -104,13 +104,13 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
                 for i in pivot_row + 1..R {
                     // If you can't divide, you probably can't reduce the matrix properly.
                     //println!("Trying inverse of {:?}", self.entries[pivot_row][pivot_col]);
-                    let mult = (self.entries[i][pivot_col]
+                    let mult = (self.entries[i][pivot_col].clone()
                         * self.entries[pivot_row][pivot_col].try_inverse().ok_or(())?)
                     .negate();
                     ops.push(Add {
                         from: pivot_row,
                         to: i,
-                        mult: mult,
+                        mult: mult.clone(),
                     });
                     self.add(pivot_row, i, mult);
                 }
@@ -135,7 +135,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         for (row, opt) in leading_entries.iter().enumerate() {
             if let Some(col) = *opt {
                 let mult = ref_form.entries[row][col].try_inverse().ok_or(())?;
-                ref_form.mul(row, mult);
+                ref_form.mul(row, mult.clone());
                 ops.push(Mul { row, mult });
             }
         }
@@ -147,7 +147,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
                     ops.push(Add {
                         from: row,
                         to: i,
-                        mult: mult,
+                        mult: mult.clone(),
                     });
                     ref_form.add(row, i, mult);
                 }
@@ -181,12 +181,13 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     }
     fn add(&mut self, from: usize, to: usize, mult: TEntry) {
         for c in 0..C {
-            self.entries[to][c] = self.entries[to][c] + (self.entries[from][c] * mult);
+            self.entries[to][c] =
+                self.entries[to][c].clone() + (self.entries[from][c].clone() * mult.clone());
         }
     }
     fn mul(&mut self, row: usize, mult: TEntry) {
         for c in 0..C {
-            self.entries[row][c] = self.entries[row][c] * mult;
+            self.entries[row][c] = self.entries[row][c].clone() * mult.clone();
         }
     }
 

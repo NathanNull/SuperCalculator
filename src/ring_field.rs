@@ -5,8 +5,8 @@ use std::{
 
 use rand::{rngs::ThreadRng, Rng};
 
-pub trait Convenient: Copy + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static {}
-impl<T: Copy + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static> Convenient for T {}
+pub trait Convenient: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static {}
+impl<T: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static> Convenient for T {}
 
 pub trait Ring:
     Add<Output = Self>

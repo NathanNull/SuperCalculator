@@ -2,7 +2,7 @@ use std::{array, collections::HashMap};
 
 use crate::{
     debug_multi::DebugMulti,
-    function::{Equation, Function},
+    expression::{equation::Equation, function::Function},
     matrix::Matrix,
     ring_field::Ring,
 };
@@ -43,8 +43,8 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
         }
         let pivots = self.left_matrix.pivots();
         let equations: [Equation<TEntry>; R] = array::from_fn(|row| {
-            let lhs = map_row_to_function(self.left_matrix.entries[row], l_names.clone());
-            let rhs = map_row_to_function(self.right_matrix.entries[row], r_names.clone());
+            let lhs = map_row_to_function(self.left_matrix.entries[row].clone(), l_names.clone());
+            let rhs = map_row_to_function(self.right_matrix.entries[row].clone(), r_names.clone());
             Equation::new(lhs, rhs)
         });
 
@@ -107,10 +107,10 @@ fn map_row_to_function<TEntry: Ring, const L: usize>(
         .map(|(col, v)| {
             if *v == TEntry::additive_ident() {
                 // the additive identity is a multiplicative absorbing element
-                Function::Constant(*v)
+                Function::Constant(v.clone())
             } else {
                 Function::Product(
-                    Box::new(Function::Constant(*v)),
+                    Box::new(Function::Constant(v.clone())),
                     Box::new(Function::Variable(names[col].clone())),
                 )
             }

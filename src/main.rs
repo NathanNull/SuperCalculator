@@ -13,7 +13,7 @@ use vector_space::subspace::Subspace;
 mod applications;
 mod augmented_matrix;
 mod debug_multi;
-mod function;
+mod expression;
 mod if_trait;
 mod matrix;
 mod num;

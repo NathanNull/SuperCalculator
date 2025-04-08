@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
     ops::{Add, Mul, Sub},
     usize,
 };
@@ -8,7 +8,9 @@ const ALWAYS_BRACKET: bool = false;
 
 use crate::ring_field::Ring;
 
-#[derive(Clone, PartialEq, Eq)]
+use super::polynomial::{Polynomial, Term};
+
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Function<TEntry: Ring> {
     Constant(TEntry),
     Variable(String),
@@ -19,7 +21,7 @@ pub enum Function<TEntry: Ring> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum FunctionPath {
+pub enum FunctionPath {
     Left,
     Right,
 }
@@ -139,7 +141,7 @@ impl<TEntry: Ring> Function<TEntry> {
 
     fn as_constant(&self) -> TEntry {
         match self {
-            Self::Constant(v) => *v,
+            Self::Constant(v) => v.clone(),
             _ => panic!("Value wasn't a constant"),
         }
     }
@@ -172,7 +174,7 @@ impl<TEntry: Ring> Function<TEntry> {
         }
     }
 
-    fn find(&self, var: &str) -> Option<Vec<FunctionPath>> {
+    pub fn find(&self, var: &str) -> Option<Vec<FunctionPath>> {
         match self {
             Self::Constant(_) | Self::Undefined => None,
             Self::Variable(v) => {
@@ -274,7 +276,8 @@ impl<TEntry: Ring> Sub for Function<TEntry> {
                 Box::new(Self::Constant(TEntry::multiplicative_ident().negate())),
                 Box::new(rhs),
             )),
-        ).eval(&HashMap::new())
+        )
+        .eval(&HashMap::new())
     }
 }
 
@@ -308,78 +311,44 @@ impl<TEntry: Ring> std::fmt::Debug for Function<TEntry> {
     }
 }
 
-pub struct Equation<TEntry: Ring> {
-    lhs: Function<TEntry>,
-    rhs: Function<TEntry>,
-}
+impl<TEntry: Ring> TryInto<Polynomial<TEntry>> for Function<TEntry> {
+    type Error = ();
 
-impl<TEntry: Ring> Equation<TEntry> {
-    pub fn new(lhs: Function<TEntry>, rhs: Function<TEntry>) -> Self {
-        Self { lhs, rhs }
-    }
-
-    pub fn solve_for(&self, var: &str) -> Option<Function<TEntry>> {
-        let neg1 = Box::new(Function::Constant(TEntry::multiplicative_ident().negate()));
-        let (mut lh, mut rh) = (self.lhs.clone(), self.rhs.clone());
-        let mut path = match (lh.find(&var), rh.find(&var)) {
-            (None, None) => panic!("No variable named {var} found"),
-            (None, Some(path)) => {
-                let tmp = lh;
-                lh = rh;
-                rh = tmp;
-                path
-            }
-            (Some(path), None) => path,
-            (Some(_), Some(_)) => panic!("Can't yet handle multiple of the same variable"),
+    fn try_into(self) -> Result<Polynomial<TEntry>, Self::Error> {
+        match self {
+            Self::Constant(c) => Ok(Polynomial::new(vec![Term::new(c, &mut [].into_iter())])),
+            Self::Variable(v) => Ok(Polynomial::new(vec![Term::new(
+                TEntry::multiplicative_ident(),
+                &mut [(v, 1)].into_iter(),
+            )])),
+            Self::Sum(lhs, rhs) => Ok(TryInto::<Polynomial<_>>::try_into(*lhs)?
+                + TryInto::<Polynomial<_>>::try_into(*rhs)?),
+            Self::Product(lhs, rhs) => Ok(TryInto::<Polynomial<_>>::try_into(*lhs)?
+                * TryInto::<Polynomial<_>>::try_into(*rhs)?),
+            Self::Inverse(_) => Err(()),
+            Self::Undefined => Err(()),
         }
-        .into_iter()
-        .collect::<VecDeque<_>>();
-        while let Some(next_op) = path.pop_back() {
-            match (lh, next_op) {
-                (Function::Constant(_) | Function::Variable(_) | Function::Undefined, _) => {
-                    unreachable!("Path should have ended by now")
-                }
-                (Function::Sum(lhs, rhs), FunctionPath::Left) => {
-                    lh = *lhs;
-                    rh =
-                        Function::Sum(Box::new(rh), Box::new(Function::Product(neg1.clone(), rhs)));
-                }
-                (Function::Sum(lhs, rhs), FunctionPath::Right) => {
-                    lh = *rhs;
-                    rh =
-                        Function::Sum(Box::new(rh), Box::new(Function::Product(neg1.clone(), lhs)));
-                }
-                (Function::Product(lhs, rhs), FunctionPath::Left) => {
-                    lh = *lhs;
-                    rh = Function::Product(Box::new(rh), Box::new(Function::Inverse(rhs)));
-                }
-                (Function::Product(lhs, rhs), FunctionPath::Right) => {
-                    lh = *rhs;
-                    rh = Function::Product(Box::new(Function::Inverse(lhs)), Box::new(rh));
-                }
-                (Function::Inverse(val), _) => {
-                    lh = *val;
-                    rh = Function::Inverse(Box::new(rh));
-                }
-            }
-            let rh_test = rh.eval(&HashMap::new());
-            if let Function::Undefined = rh_test {
-                return None;
-            } else {
-                rh = rh_test;
-            }
-        }
-        assert_eq!(lh, Function::Variable(var.to_string()));
-        Some(rh)
-    }
-
-    pub fn equals_zero(&self) -> bool {
-        self.rhs == Function::Constant(TEntry::additive_ident())
     }
 }
 
-impl<TEntry: Ring> std::fmt::Debug for Equation<TEntry> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} = {:?}", self.lhs, self.rhs)
+impl<TEntry: Ring> Ring for Function<TEntry> {
+    fn try_inverse(&self) -> Option<Self> {
+        todo!()
+    }
+
+    fn negate(&self) -> Self {
+        todo!()
+    }
+
+    fn additive_ident() -> Self {
+        todo!()
+    }
+
+    fn multiplicative_ident() -> Self {
+        todo!()
+    }
+
+    fn generate(rng: &mut rand::prelude::ThreadRng, basic: bool) -> Self {
+        todo!()
     }
 }
