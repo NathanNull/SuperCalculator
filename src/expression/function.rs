@@ -333,6 +333,12 @@ impl<TEntry: Ring> TryInto<Polynomial<TEntry>> for Function<TEntry> {
     }
 }
 
+impl<TEntry: Ring> From<TEntry> for Function<TEntry> {
+    fn from(value: TEntry) -> Self {
+        Self::Constant(value)
+    }
+}
+
 impl<TEntry: Ring> Ring for Function<TEntry> {
     fn try_inverse(&self) -> Option<Self> {
         Some(Self::Inverse(Box::new(self.clone())).eval(&HashMap::new()))

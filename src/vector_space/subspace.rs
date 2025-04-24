@@ -99,6 +99,10 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
         self.vectors.len()
     }
 
+    pub fn vectors(&self) -> &Vec<TVec> {
+        &self.vectors
+    }
+
     pub fn sample(&self, basic: bool) -> TVec {
         let mut res = TVec::zero();
         let mut rng = rng();

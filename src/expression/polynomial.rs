@@ -1,8 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
     ops::{Add, Mul, Sub},
+    usize,
 };
 
+use itertools::Itertools;
 use rand::Rng;
 use reikna::factor::quick_factorize;
 
@@ -19,9 +21,18 @@ pub struct Term<TEntry: Ring>(TEntry, Vec<(String, usize)>);
 
 impl<TEntry: Ring> std::fmt::Debug for Term<TEntry> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)?;
+        if self.0 == TEntry::multiplicative_ident() {
+            // do nothing
+        } else if self.0 == TEntry::multiplicative_ident().negate() {
+            write!(f, "-")?;
+        } else {
+            write!(f, "{:?}", self.0)?;
+        }
         for v in &self.1 {
-            write!(f, " {}^{}", v.0, v.1)?;
+            write!(f, "{}", v.0)?;
+            if v.1 != 1 {
+                write!(f, "^{}", v.1)?;
+            }
         }
         Ok(())
     }
@@ -34,15 +45,22 @@ pub struct Polynomial<TEntry: Ring> {
 
 impl<TEntry: Ring> std::fmt::Debug for Polynomial<TEntry> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.entries
-                .iter()
-                .map(|t| format!("{t:?}"))
-                .collect::<Vec<_>>()
-                .join(" + ")
-        )
+        let terms = self
+            .entries
+            .iter()
+            .sorted_by_key(|t| usize::MAX - t.degree())
+            .map(|t| format!("{t:?}"))
+            .collect::<Vec<_>>();
+        for (idx, term) in terms.iter().enumerate() {
+            if idx != 0 {
+                write!(f, " ")?;
+                if !term.starts_with('-') {
+                    write!(f, "+")?;
+                }
+            }
+            write!(f, "{}", term)?;
+        }
+        Ok(())
     }
 }
 
@@ -50,9 +68,21 @@ impl<TEntry: Ring> Polynomial<TEntry> {
     pub fn new(prec_entries: Vec<Term<TEntry>>) -> Self {
         let mut entries = vec![];
         for entry in prec_entries {
-            if !entries.iter().any(|e| entry.like_term(e)) {
+            if entry.0 == TEntry::additive_ident() {
+                // skip it
+            } else if !entries.iter().any(|e| entry.like_term(e)) {
                 entries.push(entry);
+            } else {
+                entries.iter_mut().for_each(|e| {
+                    if entry.like_term(e) {
+                        e.0 = e.0.clone() + entry.0.clone()
+                    }
+                });
             }
+        }
+        if entries.len() == 0 {
+            // Put the zero term in there
+            entries.push(Term::new(TEntry::additive_ident(), vec![]))
         }
         Self { entries }
     }
@@ -142,6 +172,15 @@ impl Polynomial<Rational> {
         // Using the rational root theorem, i.e. for a polynomial in one variable with
         // integer coefficients, any rational zeros are of the form p/q, with p being a factor
         // of the constant term and q being a factor of the highest degree term.
+
+        if self.lowest_degree().degree() != 0 {
+            // All terms have at least one variable, so we need to divide it out before anything else.
+            let new_poly = self.synthetic_divide(r!(0))?;
+            let mut ret = new_poly.zeros()?;
+            ret.push(r!(0));
+            return Ok(ret);
+        }
+
         let mut gcd = 1;
         for Term(c, _) in &self.entries {
             gcd = gcf(gcd, c.den());
@@ -297,6 +336,12 @@ impl<TEntry: Ring> Mul for Polynomial<TEntry> {
             }
         }
         Self::new(new_entries)
+    }
+}
+
+impl<TEntry: Ring> From<TEntry> for Polynomial<TEntry> {
+    fn from(value: TEntry) -> Self {
+        Into::<Function<TEntry>>::into(value).try_into().unwrap()
     }
 }
 

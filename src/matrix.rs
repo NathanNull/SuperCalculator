@@ -13,6 +13,7 @@ use crate::{
     },
 };
 
+mod eigen;
 mod ops;
 mod row_reduction;
 
