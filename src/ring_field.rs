@@ -43,7 +43,7 @@ impl Ring for i32 {
     }
 
     fn generate(rng: &mut ThreadRng, basic: bool) -> Self {
-        rng.random()
+        if basic {rng.random_range(-4..4)} else {rng.random()}
     }
 }
 

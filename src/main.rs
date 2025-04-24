@@ -65,13 +65,17 @@ fn main() -> Result<(), &'static str> {
     //     Term::new(24.into(), vec![]),
     // ]);
     // println!("Zeros of {p:?} are {:?}", p.zeros());
-    let m = matrix!(0,3,0;3,-3,3;0,3,0);
+    let m = matrix!(2,5,5;-4,-7,-4;-1,-1,-4);
     if let Some((p, d)) = m.try_diagonalize() {
         println!("{:?} is P", p);
         println!("{:?} is D", d);
         println!("{:?} is P^-1", p.try_inverse().unwrap());
         println!("{:?} should equal m", p * d * p.try_inverse().unwrap())
     }
+    println!(
+        "{:?}: generalized eigenspace of rank 2",
+        m.generalized_eigenspace(r!(-3), 2)
+    );
     Ok(())
     // let m = matrix!(1,0,0;0,1,0;0,0,0);
     // let s = Subspace::new(m.columns());

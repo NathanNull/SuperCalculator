@@ -36,6 +36,19 @@ impl<const N: usize> SquareMatrix<Rational, N> {
         test_matrix.nullspace()
     }
 
+    pub fn generalized_eigenspace(
+        &self,
+        eigenvalue: Rational,
+        rank: usize,
+    ) -> Basis<Rational, N, ColumnVector<Rational, N>> {
+        let mut test_matrix = self.clone() - SquareMatrix::ident() * eigenvalue;
+        let original = test_matrix.clone();
+        for _ in 1..rank {
+            test_matrix = test_matrix * original;
+        }
+        test_matrix.nullspace()
+    }
+
     pub fn try_diagonalize(&self) -> Option<(Self, Self)> {
         if let Ok(eigenvalues) = self.eigenvalues() {
             let mut vals = [r!(0); N];
@@ -59,12 +72,12 @@ impl<const N: usize> SquareMatrix<Rational, N> {
                 // diagonalization possible.
                 return None;
             }
-            let p = Matrix::new_columns(vecs.map(|v|v.as_array()));
+            let p = Matrix::new_columns(vecs.map(|v| v.as_array()));
             let mut d = SquareMatrix::ident();
             for (idx, val) in vals.iter().enumerate() {
                 d.entries[idx][idx] = val.clone();
             }
-            Some((p,d))
+            Some((p, d))
         } else {
             // Couldn't find rational eigenvalues so can't diagonalize while remaining in the rationals
             None

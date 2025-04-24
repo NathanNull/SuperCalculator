@@ -1,10 +1,7 @@
 use std::{
     array,
-    hash::Hash,
     ops::{Add, Mul},
 };
-
-use rand::rngs::ThreadRng;
 
 use crate::{
     debug_multi::DebugMulti,

@@ -21,9 +21,9 @@ pub struct Term<TEntry: Ring>(TEntry, Vec<(String, usize)>);
 
 impl<TEntry: Ring> std::fmt::Debug for Term<TEntry> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.0 == TEntry::multiplicative_ident() {
+        if self.0 == TEntry::multiplicative_ident() && self.1.len() != 0 {
             // do nothing
-        } else if self.0 == TEntry::multiplicative_ident().negate() {
+        } else if self.0 == TEntry::multiplicative_ident().negate() && self.1.len() != 0 {
             write!(f, "-")?;
         } else {
             write!(f, "{:?}", self.0)?;
@@ -143,7 +143,7 @@ impl<TEntry: Ring> Term<TEntry> {
 
     pub fn like_term(&self, other: &Self) -> bool {
         // Make sure other contains everything self does
-        for (i, (var, pow)) in self.1.iter().enumerate() {
+        for (var, pow) in self.1.iter() {
             if !other.1.iter().any(|(v, p)| v == var && p == pow) {
                 return false;
             }
