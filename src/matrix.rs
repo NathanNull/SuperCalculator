@@ -230,6 +230,10 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
             array::from_fn(|_| TEntry::generate(rng, basic))
         }))
     }
+    
+    fn from_usize(i: usize) -> Self {
+        Self::ident() * TEntry::from_usize(i)
+    }
 }
 
 pub struct UnsizedMatrix<'a, TEntry> {

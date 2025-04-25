@@ -325,7 +325,7 @@ impl<TEntry: Ring> TryInto<Polynomial<TEntry>> for Function<TEntry> {
             )])),
             Self::Sum(lhs, rhs) => Ok(TryInto::<Polynomial<_>>::try_into(*lhs)?
                 + TryInto::<Polynomial<_>>::try_into(*rhs)?),
-            Self::Product(lhs, rhs) => Ok(TryInto::<Polynomial<_>>::try_into(*lhs)?
+            Self::Product(lhs, rhs) => Ok(TryInto::<Polynomial<TEntry>>::try_into(*lhs)?
                 * TryInto::<Polynomial<_>>::try_into(*rhs)?),
             Self::Inverse(_) => Err(()),
             Self::Undefined => Err(()),
@@ -345,7 +345,10 @@ impl<TEntry: Ring> Ring for Function<TEntry> {
     }
 
     fn negate(&self) -> Self {
-        Self::Product(Box::new(Self::Constant(TEntry::multiplicative_ident().negate())), Box::new(self.clone()))
+        Self::Product(
+            Box::new(Self::Constant(TEntry::multiplicative_ident().negate())),
+            Box::new(self.clone()),
+        )
     }
 
     fn additive_ident() -> Self {
@@ -357,7 +360,7 @@ impl<TEntry: Ring> Ring for Function<TEntry> {
     }
 
     fn generate(rng: &mut rand::prelude::ThreadRng, basic: bool) -> Self {
-        if rng.random_bool(if basic {0.8} else {0.2}) {
+        if rng.random_bool(if basic { 0.8 } else { 0.2 }) {
             if rng.random_bool(0.5) {
                 Self::Constant(TEntry::generate(rng, basic))
             } else {
@@ -366,11 +369,21 @@ impl<TEntry: Ring> Ring for Function<TEntry> {
             }
         } else {
             match rng.random_range(0..3) {
-                0 => Self::Sum(Box::new(Self::generate(rng, basic)), Box::new(Self::generate(rng, basic))),
-                1 => Self::Product(Box::new(Self::generate(rng, basic)), Box::new(Self::generate(rng, basic))),
+                0 => Self::Sum(
+                    Box::new(Self::generate(rng, basic)),
+                    Box::new(Self::generate(rng, basic)),
+                ),
+                1 => Self::Product(
+                    Box::new(Self::generate(rng, basic)),
+                    Box::new(Self::generate(rng, basic)),
+                ),
                 2 => Self::Inverse(Box::new(Self::generate(rng, basic))),
                 _ => unreachable!("how tho"),
             }
         }
+    }
+    
+    fn from_usize(i: usize) -> Self {
+        Self::Constant(TEntry::from_usize(i))
     }
 }

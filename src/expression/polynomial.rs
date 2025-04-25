@@ -1,4 +1,5 @@
 use std::{
+    array,
     collections::{HashMap, HashSet},
     ops::{Add, Mul, Sub},
     usize,
@@ -9,9 +10,11 @@ use rand::Rng;
 use reikna::factor::quick_factorize;
 
 use crate::{
+    matrix::ColumnVector,
     num::rational::{gcf, Rational},
     r,
-    ring_field::Ring,
+    ring_field::{Field, Ring},
+    vector_space::Vector,
 };
 
 use super::function::{Function, VARS};
@@ -381,5 +384,42 @@ impl<TEntry: Ring> Ring for Polynomial<TEntry> {
             terms.push(Term::new(TEntry::generate(rng, basic), vars));
         }
         Self::new(terms)
+    }
+    
+    fn from_usize(i: usize) -> Self {
+        Self::new(vec![Term::new(TEntry::from_usize(i),vec![])])
+    }
+}
+
+impl<TEntry: Ring> Mul<TEntry> for Polynomial<TEntry> {
+    type Output = Self;
+
+    fn mul(self, rhs: TEntry) -> Self::Output {
+        let mut entries = vec![];
+        for e in self.entries {
+            entries.push(Term::new(e.0 * rhs.clone(), e.1));
+        }
+        Self::new(entries)
+    }
+}
+
+/// Using 16 here as basically an assertion that we won't deal with polynomials of degree >= 16
+impl<TEntry: Field> Vector<TEntry, 16> for Polynomial<TEntry> {
+    fn to_column(&self) -> ColumnVector<TEntry, 16> {
+        ColumnVector::v_new(array::from_fn(|i| {
+            let res = Into::<Function<TEntry>>::into(self.clone()).eval(&HashMap::from_iter([(
+                self.single_var().unwrap(),
+                Function::Constant(TEntry::from_usize(i)),
+            )]));
+            if let Function::Constant(c) = res {
+                c
+            } else {
+                TEntry::additive_ident()
+            }
+        }))
+    }
+
+    fn zero() -> Self {
+        Self::new(vec![])
     }
 }

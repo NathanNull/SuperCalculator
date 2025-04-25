@@ -201,6 +201,10 @@ impl Ring for Rational {
         };
         Self::new(rng.random_bool(0.5), num, den)
     }
+
+    fn from_usize(i: usize) -> Self {
+        Self::new(true, i as u64, 1)
+    }
 }
 
 impl From<i32> for Rational {
