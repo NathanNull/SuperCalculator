@@ -1,15 +1,8 @@
 #![feature(generic_const_exprs, iter_array_chunks)]
 #![allow(incomplete_features)]
 
-use std::{array, collections::HashMap};
-
-use applications::hill_cipher::{decode, try_break_code};
-use expression::polynomial::Polynomial;
-use matrix::{ColumnVector, Matrix};
-use num::cyclic_group::ZMod;
+use applications::markov_chain::SimpleMarkovChain;
 use num::rational::Rational;
-use ring_field::{Real, Ring};
-use vector_space::subspace::Subspace;
 
 mod applications;
 mod augmented_matrix;
@@ -65,17 +58,22 @@ fn main() -> Result<(), &'static str> {
     //     Term::new(24.into(), vec![]),
     // ]);
     // println!("Zeros of {p:?} are {:?}", p.zeros());
-    let m = matrix!(-5,4,2;-10,5,-2;8,-4,1);
-    if let Some((p, d)) = m.try_diagonalize() {
-        println!("{:?} is P", p);
-        println!("{:?} is D", d);
-        println!("{:?} is P^-1", p.try_inverse().unwrap());
-        println!("{:?} should equal m", p * d * p.try_inverse().unwrap())
-    }
-    println!(
-        "{:?}: eigenspace",
-        m.eigenspace(r!(3))
-    );
+
+    let chain = SimpleMarkovChain::new([
+        [r!(6 / 10), r!(3 / 10), r!(1 / 10)],
+        [r!(2 / 10), r!(3 / 10), r!(5 / 10)],
+        [r!(4 / 10), r!(1 / 10), r!(5 / 10)],
+    ]);
+    println!("{:?}", chain.steady_state());
+
+    // let m = matrix!(-5,4,2;-10,5,-2;8,-4,1);
+    // if let Some((p, d)) = m.try_diagonalize() {
+    //     println!("{:?} is P", p);
+    //     println!("{:?} is D", d);
+    //     println!("{:?} is P^-1", p.try_inverse().unwrap());
+    //     println!("{:?} should equal m", p * d * p.try_inverse().unwrap())
+    // }
+    // println!("{:?}: eigenspace", m.eigenspace(r!(3)));
     Ok(())
     // let m = matrix!(1,0,0;0,1,0;0,0,0);
     // let s = Subspace::new(m.columns());
