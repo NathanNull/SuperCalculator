@@ -4,7 +4,7 @@
 use std::{array, collections::HashMap};
 
 use applications::hill_cipher::{decode, try_break_code};
-use expression::polynomial::{Polynomial, Term};
+use expression::polynomial::Polynomial;
 use matrix::{ColumnVector, Matrix};
 use num::cyclic_group::ZMod;
 use num::rational::Rational;
@@ -65,7 +65,7 @@ fn main() -> Result<(), &'static str> {
     //     Term::new(24.into(), vec![]),
     // ]);
     // println!("Zeros of {p:?} are {:?}", p.zeros());
-    let m = matrix!(2,5,5;-4,-7,-4;-1,-1,-4);
+    let m = matrix!(-5,4,2;-10,5,-2;8,-4,1);
     if let Some((p, d)) = m.try_diagonalize() {
         println!("{:?} is P", p);
         println!("{:?} is D", d);
@@ -73,8 +73,8 @@ fn main() -> Result<(), &'static str> {
         println!("{:?} should equal m", p * d * p.try_inverse().unwrap())
     }
     println!(
-        "{:?}: generalized eigenspace of rank 2",
-        m.generalized_eigenspace(r!(-3), 2)
+        "{:?}: eigenspace",
+        m.eigenspace(r!(3))
     );
     Ok(())
     // let m = matrix!(1,0,0;0,1,0;0,0,0);

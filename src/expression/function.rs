@@ -8,9 +8,9 @@ const ALWAYS_BRACKET: bool = false;
 
 use rand::Rng;
 
-use crate::ring_field::Ring;
+use crate::ring_field::{Field, Ring};
 
-use super::polynomial::{Polynomial, Term};
+use super::polynomial::Polynomial;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Function<TEntry: Ring> {
@@ -313,20 +313,17 @@ impl<TEntry: Ring> std::fmt::Debug for Function<TEntry> {
     }
 }
 
-impl<TEntry: Ring> TryInto<Polynomial<TEntry>> for Function<TEntry> {
+impl<TEntry: Field, const DEGREE: usize> TryInto<Polynomial<TEntry, DEGREE>> for Function<TEntry> {
     type Error = ();
 
-    fn try_into(self) -> Result<Polynomial<TEntry>, Self::Error> {
+    fn try_into(self) -> Result<Polynomial<TEntry, DEGREE>, Self::Error> {
         match self {
-            Self::Constant(c) => Ok(Polynomial::new(vec![Term::new(c, vec![])])),
-            Self::Variable(v) => Ok(Polynomial::new(vec![Term::new(
-                TEntry::multiplicative_ident(),
-                vec![(v, 1)],
-            )])),
-            Self::Sum(lhs, rhs) => Ok(TryInto::<Polynomial<_>>::try_into(*lhs)?
-                + TryInto::<Polynomial<_>>::try_into(*rhs)?),
-            Self::Product(lhs, rhs) => Ok(TryInto::<Polynomial<TEntry>>::try_into(*lhs)?
-                * TryInto::<Polynomial<_>>::try_into(*rhs)?),
+            Self::Constant(c) => Ok(Polynomial::new(vec![(c, 0)])),
+            Self::Variable(v) => Ok(Polynomial::new(vec![(TEntry::multiplicative_ident(), 1)])),
+            Self::Sum(lhs, rhs) => Ok(TryInto::<Polynomial<_, DEGREE>>::try_into(*lhs)?
+                + TryInto::<Polynomial<_, DEGREE>>::try_into(*rhs)?),
+            Self::Product(lhs, rhs) => Ok(TryInto::<Polynomial<TEntry, DEGREE>>::try_into(*lhs)?
+                * TryInto::<Polynomial<_, DEGREE>>::try_into(*rhs)?),
             Self::Inverse(_) => Err(()),
             Self::Undefined => Err(()),
         }
@@ -382,7 +379,7 @@ impl<TEntry: Ring> Ring for Function<TEntry> {
             }
         }
     }
-    
+
     fn from_usize(i: usize) -> Self {
         Self::Constant(TEntry::from_usize(i))
     }

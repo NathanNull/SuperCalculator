@@ -1,14 +1,15 @@
 use super::*;
-use crate::expression::polynomial::{Polynomial, Term};
+use crate::expression::polynomial::Polynomial;
 use crate::num::rational::Rational;
 use crate::r;
 
-impl<const N: usize> SquareMatrix<Rational, N> {
+impl<const N: usize> SquareMatrix<Rational, N>
+where
+    [(); N + 1]:,
+{
     pub fn eigenvalues(&self) -> Result<Vec<(Rational, usize)>, ()> {
-        let mut expr_form = self.cast_into::<Polynomial<Rational>>();
-        expr_form = expr_form
-            - SquareMatrix::ident()
-                * Polynomial::new(vec![Term::new(r!(1), vec![("λ".to_string(), 1)])]);
+        let mut expr_form = self.cast_into::<Polynomial<Rational, { N + 1 }>>();
+        expr_form = expr_form - SquareMatrix::ident() * Polynomial::new(vec![(r!(1), 1)]);
         let det = expr_form.determinant();
         let ungrouped_eigenvals = det.zeros()?;
         let mut eigenvals = vec![];

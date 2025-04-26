@@ -6,7 +6,6 @@ use itertools::Itertools;
 use crate::matrix::{ColumnVector, Matrix, SquareMatrix};
 use crate::num::cyclic_group::ZMod;
 use crate::ring_field::Ring as _;
-use crate::zmatrix;
 
 const ALPHABET: &str = "abcdefghijklmnopqrstuvwxyz";
 
