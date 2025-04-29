@@ -141,7 +141,7 @@ impl<TEntry: Ring> Function<TEntry> {
         }
     }
 
-    fn as_constant(&self) -> TEntry {
+    pub fn as_constant(&self) -> TEntry {
         match self {
             Self::Constant(v) => v.clone(),
             _ => panic!("Value wasn't a constant"),

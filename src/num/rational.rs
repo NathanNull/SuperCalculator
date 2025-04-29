@@ -5,7 +5,7 @@ use std::{
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::ring_field::{Ring, TrueDiv};
+use crate::ring_field::{FromUsize, Ring, TrueDiv};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Rational {
@@ -211,6 +211,12 @@ impl Ring for Rational {
 impl From<i32> for Rational {
     fn from(value: i32) -> Self {
         Self::new(value >= 0, value.abs() as u64, 1)
+    }
+}
+
+impl FromUsize for Rational {
+    fn from(value: usize) -> Self {
+        (value as i32).into()
     }
 }
 

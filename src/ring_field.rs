@@ -53,3 +53,8 @@ pub trait TrueDiv: Div<Output = Self> + Sized {
 
 pub trait Field: Ring + TrueDiv {}
 impl<T: Ring + TrueDiv> Field for T {}
+
+#[const_trait]
+pub trait FromUsize {
+    fn from(val: usize) -> Self;
+}

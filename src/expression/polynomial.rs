@@ -9,9 +9,12 @@ use std::{
 
 use crate::{
     matrix::ColumnVector,
-    num::rational::{gcf, Rational},
+    num::{
+        rational::{gcf, Rational},
+        real::Real,
+    },
     r,
-    ring_field::{Field, Ring},
+    ring_field::{Field, FromUsize, Ring},
     vector_space::Vector,
 };
 
@@ -49,7 +52,7 @@ impl<TEntry: Field, const DEGREE: usize> std::fmt::Debug for Polynomial<TEntry, 
             .iter()
             .enumerate()
             .rev()
-            .filter(|(_,t)|t != &&TEntry::additive_ident())
+            .filter(|(_, t)| t != &&TEntry::additive_ident())
             .map(|(i, t)| format_term(t.clone(), i))
             .collect::<Vec<_>>();
         for (idx, term) in terms.iter().enumerate() {
@@ -130,27 +133,31 @@ impl<TEntry: Field, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
 //     }
 // }
 
-impl<const DEGREE: usize> Polynomial<Rational, DEGREE> {
-    pub fn zeros(&self) -> Result<Vec<Rational>, ()> {
+pub trait PolynomialSolvable: Field + FromUsize {
+    fn zeros<const DEGREE: usize>(polynomial: &Polynomial<Self, DEGREE>) -> Result<Vec<Self>, ()>;
+}
+
+impl PolynomialSolvable for Rational {
+    fn zeros<const DEGREE: usize>(poly: &Polynomial<Self, DEGREE>) -> Result<Vec<Self>, ()> {
         // Using the rational root theorem, i.e. for a polynomial in one variable with
         // integer coefficients, any rational zeros are of the form p/q, with p being a factor
         // of the constant term and q being a factor of the highest degree term.
 
-        if self.lowest_degree() != 0 {
+        if poly.lowest_degree() != 0 {
             // All terms have at least one variable, so we need to divide it out before anything else.
-            let new_poly = self.synthetic_divide(r!(0))?;
+            let new_poly = poly.synthetic_divide(r!(0))?;
             let mut ret = new_poly.zeros()?;
             ret.push(r!(0));
             return Ok(ret);
         }
 
         let mut gcd = 1;
-        for (_, c) in self.entries.iter().enumerate() {
+        for (_, c) in poly.entries.iter().enumerate() {
             gcd = gcf(gcd, c.den());
         }
         let gcd_r = Rational::new(true, gcd, 1);
-        let a0 = (self.entries[0] * gcd_r).num();
-        let an = (self.entries[self.highest_degree()] * gcd_r).num();
+        let a0 = (poly.entries[0] * gcd_r).num();
+        let an = (poly.entries[poly.highest_degree()] * gcd_r).num();
         let a0_pf = quick_factorize(a0);
         let an_pf = quick_factorize(an);
         let a0_f: HashSet<u64> = HashSet::from_iter((0..1 << a0_pf.len()).map(|i| {
@@ -172,7 +179,7 @@ impl<const DEGREE: usize> Polynomial<Rational, DEGREE> {
 
         let mut map = HashMap::new();
         let mut zeros = vec![];
-        let mut tmp_f = self.clone();
+        let mut tmp_f = poly.clone();
         'choose: for p in &a0_f {
             for q in &an_f {
                 for sign in [true, false] {
@@ -191,7 +198,7 @@ impl<const DEGREE: usize> Polynomial<Rational, DEGREE> {
                         tmp_f = tmp_f.synthetic_divide(v)?;
                     }
                     // We've divided out everything and are just left with 1
-                    if tmp_f == Self::new(vec![(r!(1), 0)]) {
+                    if tmp_f == Polynomial::new(vec![(r!(1), 0)]) {
                         break 'choose;
                     }
                 }
@@ -199,20 +206,49 @@ impl<const DEGREE: usize> Polynomial<Rational, DEGREE> {
         }
         Ok(zeros)
     }
+}
 
-    fn synthetic_divide(&self, val: Rational) -> Result<Self, ()> {
-        let max_deg = self.highest_degree();
-        let mut carry = 0.into();
-        let mut bottom_line = vec![r!(0); max_deg + 1];
-        for d in (0..=max_deg).rev() {
-            let top = self.entries[d];
-            carry = top + carry * val;
-            bottom_line[d] = carry;
+const MAX_ITERATIONS: usize = 100;
+const EPSILON: f64 = 1e-7;
+impl PolynomialSolvable for Real {
+    fn zeros<const DEGREE: usize>(polynomial: &Polynomial<Self, DEGREE>) -> Result<Vec<Self>, ()> {
+        let mut guess = Real(1.);
+        let mut var_map = HashMap::from_iter([("x".to_string(), Function::Constant(guess))]);
+        for _ in 0..MAX_ITERATIONS {
+            if Into::<Function<_>>::into(polynomial.clone())
+                .eval(&var_map)
+                .as_constant()
+                .0
+                .abs()
+                < EPSILON
+            {
+                return Ok(vec![guess]);
+            }
+            guess = polynomial.newton_iterate(guess);
+            var_map.insert("x".to_string(), Function::Constant(guess));
         }
-        if carry == 0.into() {
+        Err(())
+    }
+}
+
+impl<TEntry: PolynomialSolvable, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
+    pub fn zeros(&self) -> Result<Vec<TEntry>, ()> {
+        TEntry::zeros(self)
+    }
+
+    fn synthetic_divide(&self, val: TEntry) -> Result<Self, ()> {
+        let max_deg = self.highest_degree();
+        let mut carry = TEntry::additive_ident();
+        let mut bottom_line = vec![TEntry::additive_ident(); max_deg + 1];
+        for d in (0..=max_deg).rev() {
+            let top = self.entries[d].clone();
+            carry = top + carry * val.clone();
+            bottom_line[d] = carry.clone();
+        }
+        if carry == TEntry::additive_ident() {
             let mut entries = vec![];
             for (deg, coeff) in bottom_line.into_iter().enumerate() {
-                if coeff != 0.into() {
+                if coeff != TEntry::additive_ident() {
                     entries.push((coeff, deg - 1))
                 }
             }
@@ -220,6 +256,26 @@ impl<const DEGREE: usize> Polynomial<Rational, DEGREE> {
         } else {
             Err(())
         }
+    }
+
+    fn deriv(&self) -> Self {
+        let mut res = Self::new(vec![]);
+        for i in 0..DEGREE - 1 {
+            res.entries[i] = self.entries[i + 1].clone() * TEntry::from(i);
+        }
+        res
+    }
+
+    fn newton_iterate(&self, val: TEntry) -> TEntry {
+        let deriv = self.deriv();
+        let var_map = &HashMap::from_iter([("x".to_string(), Function::Constant(val.clone()))]);
+        let deriv_val = Into::<Function<TEntry>>::into(deriv)
+            .eval(var_map)
+            .as_constant();
+        let self_val = Into::<Function<TEntry>>::into(self.clone())
+            .eval(var_map)
+            .as_constant();
+        val - (self_val / deriv_val)
     }
 }
 
@@ -354,7 +410,7 @@ impl<TEntry: Field, const DEGREE: usize> Vector<TEntry, DEGREE> for Polynomial<T
 
     fn from_column(column: &ColumnVector<TEntry, DEGREE>) -> Self {
         Self {
-            entries: column.entries.each_ref().map(|r|r[0].clone()),
+            entries: column.entries.each_ref().map(|r| r[0].clone()),
         }
     }
 }

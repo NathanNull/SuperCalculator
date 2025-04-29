@@ -1,15 +1,13 @@
 use super::*;
-use crate::expression::polynomial::Polynomial;
-use crate::num::rational::Rational;
-use crate::r;
+use crate::expression::polynomial::{Polynomial, PolynomialSolvable};
 
-impl<const N: usize> SquareMatrix<Rational, N>
+impl<TEntry: PolynomialSolvable, const N: usize> SquareMatrix<TEntry, N>
 where
     [(); N + 1]:,
 {
-    pub fn eigenvalues(&self) -> Result<Vec<(Rational, usize)>, ()> {
-        let mut expr_form = self.cast_into::<Polynomial<Rational, { N + 1 }>>();
-        expr_form = expr_form - SquareMatrix::ident() * Polynomial::new(vec![(r!(1), 1)]);
+    pub fn eigenvalues(&self) -> Result<Vec<(TEntry, usize)>, ()> {
+        let mut expr_form = self.clone().cast_into::<Polynomial<TEntry, { N + 1 }>>();
+        expr_form = expr_form - SquareMatrix::ident() * Polynomial::new(vec![(TEntry::from(1), 1)]);
         let det = expr_form.determinant();
         let ungrouped_eigenvals = det.zeros()?;
         let mut eigenvals = vec![];
@@ -29,41 +27,38 @@ where
         Ok(eigenvals)
     }
 
-    pub fn eigenspace(
-        &self,
-        eigenvalue: Rational,
-    ) -> Basis<Rational, N, ColumnVector<Rational, N>> {
+    pub fn eigenspace(&self, eigenvalue: TEntry) -> Basis<TEntry, N, ColumnVector<TEntry, N>> {
         let test_matrix = self.clone() - SquareMatrix::ident() * eigenvalue;
         test_matrix.nullspace()
     }
 
     pub fn generalized_eigenspace(
         &self,
-        eigenvalue: Rational,
+        eigenvalue: TEntry,
         rank: usize,
-    ) -> Basis<Rational, N, ColumnVector<Rational, N>> {
+    ) -> Basis<TEntry, N, ColumnVector<TEntry, N>> {
         let mut test_matrix = self.clone() - SquareMatrix::ident() * eigenvalue;
         let original = test_matrix.clone();
         for _ in 1..rank {
-            test_matrix = test_matrix * original;
+            test_matrix = test_matrix * original.clone();
         }
         test_matrix.nullspace()
     }
 
     pub fn try_diagonalize(&self) -> Option<(Self, Self)> {
         if let Ok(eigenvalues) = self.eigenvalues() {
-            let mut vals = [r!(0); N];
+            let mut vals: [TEntry; N] = array::from_fn(|_| TEntry::from(0));
             let mut vecs = vals.each_ref().map(|_| ColumnVector::zero());
             let mut num_found = 0;
             for (eigenvalue, mult) in eigenvalues {
-                let eigenspace = self.eigenspace(eigenvalue);
+                let eigenspace = self.eigenspace(eigenvalue.clone());
                 if eigenspace.dimension() < mult {
                     // Too few eigenvectors to construct our square matrix
                     return None;
                 }
                 for vec in eigenspace.vectors() {
                     vecs[num_found] = vec.clone();
-                    vals[num_found] = eigenvalue;
+                    vals[num_found] = eigenvalue.clone();
                     num_found += 1;
                 }
             }

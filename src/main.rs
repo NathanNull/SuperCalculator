@@ -1,4 +1,4 @@
-#![feature(generic_const_exprs, iter_array_chunks)]
+#![feature(generic_const_exprs, iter_array_chunks, const_trait_impl)]
 #![allow(incomplete_features)]
 
 use applications::{
@@ -6,9 +6,12 @@ use applications::{
     linear_regression::line_of_best_fit,
     markov_chain::SimpleMarkovChain,
     polynomial_calculus::{self, Calculus},
+    ranking::rank,
 };
 use expression::polynomial::Polynomial;
+use matrix::Matrix;
 use num::rational::Rational;
+use ring_field::Ring;
 use vector_space::Vector;
 
 mod applications;
@@ -90,7 +93,9 @@ fn main() -> Result<(), &'static str> {
     // game.make_move(3, 3);
     // println!("{:?}", game.solve());
 
-    println!("{:?}", line_of_best_fit(data!((-2, -10), (-1, 2), (3, 8))));
+    //println!("{:?}", line_of_best_fit(data!((-2, -10), (-1, 2), (3, 8))));
+
+    println!("{:?}", rank([[0, 33, 5], [10, 0, 20], [30, 20, 0]]));
 
     // let m = matrix!(-5,4,2;-10,5,-2;8,-4,1);
     // if let Some((p, d)) = m.try_diagonalize() {
