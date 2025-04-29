@@ -2,6 +2,7 @@
 #![allow(incomplete_features)]
 
 use applications::{
+    lights_out::LightsOutGame,
     markov_chain::SimpleMarkovChain,
     polynomial_calculus::{self, Calculus},
 };
@@ -72,17 +73,21 @@ fn main() -> Result<(), &'static str> {
     // println!("{:?}", chain.steady_state());
 
     // 3x^2+x
-    let f: Polynomial<Rational, 3> = Polynomial::new(vec![(r!(3), 2), (r!(1), 1)]);
+    // let f: Polynomial<Rational, 3> = Polynomial::new(vec![(r!(3), 2), (r!(1), 1)]);
+    // println!(
+    //     "{:?}",
+    //     Polynomial::from_column(&(Calculus::DERIVATIVE * f.to_column()))
+    // );
+    // println!(
+    //     "{:?}",
+    //     Polynomial::from_column(&(Calculus::INTEGRAL * f.to_column()))
+    // );
 
-    println!(
-        "{:?}",
-        Polynomial::from_column(&(Calculus::DERIVATIVE * f.to_column()))
-    );
-
-    println!(
-        "{:?}",
-        Polynomial::from_column(&(Calculus::INTEGRAL * f.to_column()))
-    );
+    let mut game = LightsOutGame::<5, 5>::blank();
+    game.make_move(1, 1);
+    game.make_move(2, 2);
+    game.make_move(3, 3);
+    println!("{:?}", game.solve());
 
     // let m = matrix!(-5,4,2;-10,5,-2;8,-4,1);
     // if let Some((p, d)) = m.try_diagonalize() {
