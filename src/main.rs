@@ -1,4 +1,4 @@
-#![feature(generic_const_exprs, iter_array_chunks, const_trait_impl)]
+#![feature(generic_const_exprs, iter_array_chunks)]
 #![allow(incomplete_features)]
 
 use applications::{
