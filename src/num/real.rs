@@ -80,10 +80,6 @@ impl Ring for Real {
             Self(rng.random::<f64>() % 1024.)
         }
     }
-
-    fn from_usize(i: usize) -> Self {
-        Self(i as f64)
-    }
 }
 
 impl TrueDiv for Real {

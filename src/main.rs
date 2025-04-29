@@ -1,8 +1,13 @@
 #![feature(generic_const_exprs, iter_array_chunks)]
 #![allow(incomplete_features)]
 
-use applications::markov_chain::SimpleMarkovChain;
+use applications::{
+    markov_chain::SimpleMarkovChain,
+    polynomial_calculus::{self, Calculus},
+};
+use expression::polynomial::Polynomial;
 use num::rational::Rational;
+use vector_space::Vector;
 
 mod applications;
 mod augmented_matrix;
@@ -59,12 +64,25 @@ fn main() -> Result<(), &'static str> {
     // ]);
     // println!("Zeros of {p:?} are {:?}", p.zeros());
 
-    let chain = SimpleMarkovChain::new([
-        [r!(6 / 10), r!(3 / 10), r!(1 / 10)],
-        [r!(2 / 10), r!(3 / 10), r!(5 / 10)],
-        [r!(4 / 10), r!(1 / 10), r!(5 / 10)],
-    ]);
-    println!("{:?}", chain.steady_state());
+    // let chain = SimpleMarkovChain::new([
+    //     [r!(6 / 10), r!(3 / 10), r!(1 / 10)],
+    //     [r!(2 / 10), r!(3 / 10), r!(5 / 10)],
+    //     [r!(4 / 10), r!(1 / 10), r!(5 / 10)],
+    // ]);
+    // println!("{:?}", chain.steady_state());
+
+    // 3x^2+x
+    let f: Polynomial<Rational, 3> = Polynomial::new(vec![(r!(3), 2), (r!(1), 1)]);
+
+    println!(
+        "{:?}",
+        Polynomial::from_column(&(Calculus::DERIVATIVE * f.to_column()))
+    );
+
+    println!(
+        "{:?}",
+        Polynomial::from_column(&(Calculus::INTEGRAL * f.to_column()))
+    );
 
     // let m = matrix!(-5,4,2;-10,5,-2;8,-4,1);
     // if let Some((p, d)) = m.try_diagonalize() {

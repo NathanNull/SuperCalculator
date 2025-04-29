@@ -19,7 +19,6 @@ pub trait Ring:
     fn additive_ident() -> Self;
     fn multiplicative_ident() -> Self;
     fn generate(rng: &mut ThreadRng, basic: bool) -> Self;
-    fn from_usize(i: usize) -> Self;
 }
 
 impl Ring for i32 {
@@ -45,10 +44,6 @@ impl Ring for i32 {
 
     fn generate(rng: &mut ThreadRng, basic: bool) -> Self {
         if basic {rng.random_range(-4..4)} else {rng.random()}
-    }
-
-    fn from_usize(i: usize) -> Self {
-        i as i32
     }
 }
 

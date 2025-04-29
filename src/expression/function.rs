@@ -379,8 +379,4 @@ impl<TEntry: Ring> Ring for Function<TEntry> {
             }
         }
     }
-
-    fn from_usize(i: usize) -> Self {
-        Self::Constant(TEntry::from_usize(i))
-    }
 }

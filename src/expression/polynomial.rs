@@ -49,6 +49,7 @@ impl<TEntry: Field, const DEGREE: usize> std::fmt::Debug for Polynomial<TEntry, 
             .iter()
             .enumerate()
             .rev()
+            .filter(|(_,t)|t != &&TEntry::additive_ident())
             .map(|(i, t)| format_term(t.clone(), i))
             .collect::<Vec<_>>();
         for (idx, term) in terms.iter().enumerate() {
@@ -328,10 +329,6 @@ impl<TEntry: Field, const DEGREE: usize> Ring for Polynomial<TEntry, DEGREE> {
         }
         Self::new(terms)
     }
-
-    fn from_usize(i: usize) -> Self {
-        Self::new(vec![(TEntry::from_usize(i), 0)])
-    }
 }
 
 impl<TEntry: Field, const DEGREE: usize> Mul<TEntry> for Polynomial<TEntry, DEGREE> {
@@ -346,24 +343,18 @@ impl<TEntry: Field, const DEGREE: usize> Mul<TEntry> for Polynomial<TEntry, DEGR
     }
 }
 
-impl<TEntry: Field, const DEGREE: usize> Vector<TEntry, { DEGREE + 1 }>
-    for Polynomial<TEntry, DEGREE>
-{
-    fn to_column(&self) -> ColumnVector<TEntry, { DEGREE + 1 }> {
-        ColumnVector::v_new(array::from_fn(|i| {
-            let res = Into::<Function<TEntry>>::into(self.clone()).eval(&HashMap::from_iter([(
-                "x".to_string(),
-                Function::Constant(TEntry::from_usize(i)),
-            )]));
-            if let Function::Constant(c) = res {
-                c
-            } else {
-                TEntry::additive_ident()
-            }
-        }))
+impl<TEntry: Field, const DEGREE: usize> Vector<TEntry, DEGREE> for Polynomial<TEntry, DEGREE> {
+    fn to_column(&self) -> ColumnVector<TEntry, DEGREE> {
+        ColumnVector::v_new(self.entries.clone())
     }
 
     fn zero() -> Self {
         Self::new(vec![])
+    }
+
+    fn from_column(column: &ColumnVector<TEntry, DEGREE>) -> Self {
+        Self {
+            entries: column.entries.each_ref().map(|r|r[0].clone()),
+        }
     }
 }

@@ -28,9 +28,13 @@ impl std::fmt::Debug for Rational {
 }
 
 impl Rational {
-    pub fn new(positive: bool, num: u64, den: u64) -> Self {
+    pub const fn new(positive: bool, num: u64, den: u64) -> Self {
         if num == 0 {
-            return Self::additive_ident();
+            return Self {
+                positive: true,
+                num: 0,
+                den: 1,
+            };
         }
         let factor = gcf(num, den);
         Self {
@@ -53,7 +57,7 @@ impl Rational {
     }
 }
 
-pub fn gcf(mut u: u64, mut v: u64) -> u64 {
+pub const fn gcf(mut u: u64, mut v: u64) -> u64 {
     // Base cases: gcd(n, 0) = gcd(0, n) = n
     if u == 0 {
         return v;
@@ -68,12 +72,13 @@ pub fn gcf(mut u: u64, mut v: u64) -> u64 {
     u >>= i;
     let j = v.trailing_zeros();
     v >>= j;
-    let k = i.min(j);
+    // k = min(i,j)
+    let k = if i < j { i } else { j };
 
     loop {
         // u and v are odd at the start of the loop
-        debug_assert!(u % 2 == 1, "u = {} should be odd", u);
-        debug_assert!(v % 2 == 1, "v = {} should be odd", v);
+        // debug_assert!(u % 2 == 1, "u = {} should be odd", u);
+        // debug_assert!(v % 2 == 1, "v = {} should be odd", v);
 
         // Swap if necessary so u ≤ v
         if u > v {
@@ -200,10 +205,6 @@ impl Ring for Rational {
             (rng.random::<u8>() as u64, rng.random::<u8>() as u64)
         };
         Self::new(rng.random_bool(0.5), num, den)
-    }
-
-    fn from_usize(i: usize) -> Self {
-        Self::new(true, i as u64, 1)
     }
 }
 

@@ -23,7 +23,7 @@ pub struct Matrix<TEntry: Ring, const R: usize, const C: usize> {
 }
 
 impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
-    pub fn new(entries: [[TEntry; C]; R]) -> Self {
+    pub const fn new(entries: [[TEntry; C]; R]) -> Self {
         Self { entries }
     }
 
@@ -229,10 +229,6 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
         Self::new(array::from_fn(|_| {
             array::from_fn(|_| TEntry::generate(rng, basic))
         }))
-    }
-    
-    fn from_usize(i: usize) -> Self {
-        Self::ident() * TEntry::from_usize(i)
     }
 }
 

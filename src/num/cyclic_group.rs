@@ -85,10 +85,6 @@ impl<const N: usize> Ring for ZMod<N> {
     fn generate(rng: &mut rand::prelude::ThreadRng, basic: bool) -> Self {
         Self::new(rng.random_range(..if basic { 2 % N } else { N }))
     }
-
-    fn from_usize(i: usize) -> Self {
-        Self::new(i)
-    }
 }
 
 impl<const N: usize> Div for ZMod<N>
