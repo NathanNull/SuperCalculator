@@ -3,6 +3,7 @@
 
 use applications::{
     lights_out::LightsOutGame,
+    linear_regression::line_of_best_fit,
     markov_chain::SimpleMarkovChain,
     polynomial_calculus::{self, Calculus},
 };
@@ -83,11 +84,13 @@ fn main() -> Result<(), &'static str> {
     //     Polynomial::from_column(&(Calculus::INTEGRAL * f.to_column()))
     // );
 
-    let mut game = LightsOutGame::<5, 5>::blank();
-    game.make_move(1, 1);
-    game.make_move(2, 2);
-    game.make_move(3, 3);
-    println!("{:?}", game.solve());
+    // let mut game = LightsOutGame::<5, 5>::blank();
+    // game.make_move(1, 1);
+    // game.make_move(2, 2);
+    // game.make_move(3, 3);
+    // println!("{:?}", game.solve());
+
+    println!("{:?}", line_of_best_fit(data!((-2, -10), (-1, 2), (3, 8))));
 
     // let m = matrix!(-5,4,2;-10,5,-2;8,-4,1);
     // if let Some((p, d)) = m.try_diagonalize() {
