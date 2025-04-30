@@ -111,6 +111,20 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
         }
         res
     }
+
+    const MAX_DIM: usize = 32;
+    pub fn contains(&self, vec: TVec) -> bool
+    where
+        [(); Self::MAX_DIM]:,
+    {
+        assert!(self.vectors.len() <= Self::MAX_DIM, "Can't operate on a basis of dimension greater than {:?}", Self::MAX_DIM);
+        let mut vectors: [TVec; Self::MAX_DIM] = array::from_fn(|_| TVec::zero());
+        for (i, v) in self.vectors.iter().enumerate() {
+            vectors[i] = v.clone();
+        }
+        let b = Subspace::new(vectors);
+        b.contains(vec)
+    }
 }
 
 impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize> std::fmt::Debug

@@ -319,7 +319,7 @@ impl<TEntry: Field, const DEGREE: usize> TryInto<Polynomial<TEntry, DEGREE>> for
     fn try_into(self) -> Result<Polynomial<TEntry, DEGREE>, Self::Error> {
         match self {
             Self::Constant(c) => Ok(Polynomial::new(vec![(c, 0)])),
-            Self::Variable(v) => Ok(Polynomial::new(vec![(TEntry::multiplicative_ident(), 1)])),
+            Self::Variable(_v) => Ok(Polynomial::new(vec![(TEntry::multiplicative_ident(), 1)])),
             Self::Sum(lhs, rhs) => Ok(TryInto::<Polynomial<_, DEGREE>>::try_into(*lhs)?
                 + TryInto::<Polynomial<_, DEGREE>>::try_into(*rhs)?),
             Self::Product(lhs, rhs) => Ok(TryInto::<Polynomial<TEntry, DEGREE>>::try_into(*lhs)?

@@ -1,8 +1,7 @@
 use crate::{
     matrix::{ColumnVector, SquareMatrix},
     num::rational::Rational,
-    r,
-    vector_space::subspace::Basis,
+    ring_field::{Ring, TrueDiv},
 };
 
 pub struct SimpleMarkovChain<const STATES: usize> {
@@ -33,8 +32,11 @@ impl<const STATES: usize> SimpleMarkovChain<STATES> {
         let eigenmatrix = self.transition_matrix - SquareMatrix::ident();
         println!("{:?}", eigenmatrix);
         if let Some(scaled_state) = eigenmatrix.nullspace().vectors().first() {
-            let sum = scaled_state.entries.iter().fold(r!(0), |acc, r| acc + r[0]);
-            Some(*scaled_state * (r!(1) / sum))
+            let sum = scaled_state
+                .entries
+                .iter()
+                .fold(Rational::additive_ident(), |acc, r| acc + r[0]);
+            Some(*scaled_state * sum.inverse())
         } else {
             None
         }

@@ -1,6 +1,6 @@
 use std::{
     hash::Hash,
-    ops::{Add, Div, Mul, Neg, Sub},
+    ops::{Add, Div, Mul, Sub},
 };
 
 use rand::{rngs::ThreadRng, Rng};
@@ -8,12 +8,7 @@ use rand::{rngs::ThreadRng, Rng};
 pub trait Convenient: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static {}
 impl<T: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static> Convenient for T {}
 
-pub trait Ring:
-    Add<Output = Self>
-    + Sub<Output = Self>
-    + Mul<Output = Self>
-    + Convenient
-{
+pub trait Ring: Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Convenient {
     fn try_inverse(&self) -> Option<Self>;
     fn negate(&self) -> Self;
     fn additive_ident() -> Self;
@@ -43,7 +38,11 @@ impl Ring for i32 {
     }
 
     fn generate(rng: &mut ThreadRng, basic: bool) -> Self {
-        if basic {rng.random_range(-4..4)} else {rng.random()}
+        if basic {
+            rng.random_range(-4..4)
+        } else {
+            rng.random()
+        }
     }
 }
 

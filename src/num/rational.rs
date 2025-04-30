@@ -51,10 +51,6 @@ impl Rational {
     pub fn den(&self) -> u64 {
         self.den
     }
-
-    pub fn positive(&self) -> bool {
-        self.positive
-    }
 }
 
 pub const fn gcf(mut u: u64, mut v: u64) -> u64 {
@@ -202,7 +198,7 @@ impl Ring for Rational {
         let (num, den) = if basic {
             (rng.random_range(..3), 1)
         } else {
-            (rng.random::<u8>() as u64, rng.random::<u8>() as u64)
+            (rng.random_range(..64), rng.random_range(1..8))
         };
         Self::new(rng.random_bool(0.5), num, den)
     }

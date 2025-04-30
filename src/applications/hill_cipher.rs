@@ -38,8 +38,6 @@ pub fn try_break_code<const BLOCK_SIZE: usize>(
             if enc_trial.determinant().try_inverse().is_some() {
                 return Some(enc_trial);
             }
-        } else {
-            println!("Index {vals:?} failed, det={:?}", pmat.determinant());
         }
     }
 
@@ -52,7 +50,6 @@ pub fn decode<const BLOCK_SIZE: usize>(
 ) -> Option<String> {
     if let Some(decrypt) = encryption_matrix.try_inverse() {
         let mut chars = vec![];
-        println!("{decrypt:?}: inverse");
         for c in to_nums(ciphertext) {
             let c_col = ColumnVector::v_new(c);
             let plaintext_col = decrypt * c_col;
@@ -61,7 +58,7 @@ pub fn decode<const BLOCK_SIZE: usize>(
                 chars.push(&ALPHABET[pos..=pos]);
             }
         }
-        return Some(chars.join(""))
+        return Some(chars.join(""));
     } else {
         println!(
             "Couldn't take the inverse (det={:?})",
@@ -69,4 +66,20 @@ pub fn decode<const BLOCK_SIZE: usize>(
         );
     }
     None
+}
+
+pub fn encode<const BLOCK_SIZE: usize>(
+    ciphertext: &str,
+    encryption_matrix: SquareMatrix<ZMod<26>, BLOCK_SIZE>,
+) -> String {
+    let mut chars = vec![];
+    for c in to_nums(ciphertext) {
+        let c_col = ColumnVector::v_new(c);
+        let ciphertext_col = encryption_matrix * c_col;
+        for [e] in ciphertext_col.entries {
+            let pos = e.into();
+            chars.push(&ALPHABET[pos..=pos]);
+        }
+    }
+    chars.join("")
 }

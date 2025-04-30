@@ -143,7 +143,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         .basis()
     }
 
-    fn nullity(&self) -> usize
+    pub fn nullity(&self) -> usize
     where
         TEntry: Field,
     {
