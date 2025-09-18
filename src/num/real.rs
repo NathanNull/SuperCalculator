@@ -10,6 +10,12 @@ use crate::ring_field::{FromUsize, Ring, TrueDiv};
 #[derive(Debug, Clone, Copy)]
 pub struct Real(pub f64);
 
+impl Real {
+    pub fn sqrt(&self) -> Self {
+        Real(self.0.sqrt())
+    }
+}
+
 const EPSILON: f64 = 1e-7;
 impl PartialEq for Real {
     fn eq(&self, other: &Self) -> bool {

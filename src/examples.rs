@@ -1,6 +1,6 @@
 use crate::expression::polynomial::Polynomial;
 use crate::matrix;
-use crate::matrix::{ColumnVector, Matrix, SquareMatrix};
+use crate::matrix::{ColumnVector, SquareMatrix};
 use crate::num::{cyclic_group::ZMod, rational::Rational};
 use crate::ring_field::Ring;
 use crate::vector_space::Vector;
@@ -34,6 +34,7 @@ pub enum Examples {
 }
 
 impl Examples {
+    #[allow(unused)]
     pub fn run(&self) {
         match self {
             Self::HillCipher => {

@@ -18,6 +18,46 @@ pub trait Vector<TEntry: Field, const DIMENSION: usize>:
     fn to_column(&self) -> ColumnVector<TEntry, DIMENSION>;
     fn from_column(column: &ColumnVector<TEntry, DIMENSION>) -> Self;
     fn zero() -> Self;
+    fn dot(&self, other: &Self) -> TEntry {
+        let col_self = self.to_column();
+        let col_other = other.to_column();
+        let mut res = TEntry::additive_ident();
+        for ([s],[o]) in col_self.entries.into_iter().zip(col_other.entries) {
+            res = res + (s * o);
+        }
+        res
+    }
+    fn triple_product(&self, v: &Self, w: &Self) -> TEntry where Self: Cross<TEntry> + Sized {
+        self.dot(&v.cross(&w))
+    }
+    fn square_magnitude(&self) -> TEntry {
+        self.dot(self)
+    }
+    fn project_onto(&self, other: &Self) -> Self {
+        other.clone() * (self.dot(other)/other.dot(other))
+    }
+}
+
+pub trait Cross<TEntry> {
+    fn cross(&self, other: &Self) -> Self
+    where
+        Self: Sized;
+}
+
+impl<TEntry: Field, T: Vector<TEntry, 3>> Cross<TEntry> for T {
+    fn cross(&self, other: &Self) -> Self
+    where
+        Self: Sized,
+    {
+        let [u1, u2, u3] = self.to_column().as_array();
+        let [v1, v2, v3] = other.to_column().as_array();
+        let res = [
+            u2.clone() * v3.clone() - u3.clone() * v2.clone(),
+            u3.clone() * v1.clone() - u1.clone() * v3.clone(),
+            u1.clone() * v2.clone() - u2.clone() * v1.clone(),
+        ];
+        Self::from_column(&ColumnVector::v_new(res))
+    }
 }
 
 impl<TEntry: Field, const N: usize> Vector<TEntry, N> for ColumnVector<TEntry, N> {

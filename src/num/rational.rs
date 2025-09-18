@@ -1,11 +1,11 @@
 use std::{
     mem::swap,
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, Div, Mul, Neg, Sub},
 };
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::ring_field::{FromUsize, Ring, TrueDiv};
+use crate::{r, ring_field::{FromUsize, Ring, TrueDiv}};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Rational {
@@ -50,6 +50,25 @@ impl Rational {
 
     pub fn den(&self) -> u64 {
         self.den
+    }
+
+    pub fn positive(&self) -> bool {
+        self.positive
+    }
+
+    pub fn as_f64(&self) -> f64 {
+        self.num as f64 / self.den as f64 * if self.positive { 1. } else { -1. }
+    }
+
+    pub fn approx_sqrt(&self) -> Self {
+        if !self.positive {
+            return Self::additive_ident()
+        }
+        let mut guess = Self::new(true, self.num.isqrt(), self.den.isqrt());
+        for _ in 0..10 {
+            guess = (guess + *self / guess) / r!(2);
+        }
+        return guess;
     }
 }
 
@@ -166,6 +185,17 @@ impl TrueDiv for Rational {
     }
 }
 
+impl Neg for Rational {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Self {
+            positive: !self.positive,
+            ..self
+        }
+    }
+}
+
 impl Ring for Rational {
     fn try_inverse(&self) -> Option<Self> {
         Some(self.inverse())
@@ -219,10 +249,10 @@ impl FromUsize for Rational {
 #[macro_export]
 macro_rules! r {
     ($num:literal $(/$den:literal)? ) => {
-        Rational::new($num>=0, if $num<0 {
-            -($num)
+        crate::num::rational::Rational::new($num>=0, if $num<0 {
+            -($num as i64)
         } else {
-            $num
+            $num as i64
         } as u64, 1$(*$den)?)
     };
 }

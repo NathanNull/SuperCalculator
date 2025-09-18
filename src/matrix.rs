@@ -22,6 +22,34 @@ pub struct Matrix<TEntry: Ring, const R: usize, const C: usize> {
     pub entries: [[TEntry; C]; R],
 }
 
+/// Example: ```matrix!(1,2,3;4,5,6;7,8,9)```
+#[macro_export]
+macro_rules! matrix {
+    ($( $( $num:literal $(/$den:literal)? ),+ );+ ) => {
+        crate::matrix::Matrix::new([ $( [ $( {
+            r!($num $(/$den)?)
+        } ),* ] ),* ])
+    };
+}
+
+#[macro_export]
+macro_rules! fmatrix {
+    ($( $( $num:expr ),+ );+ ) => {
+        crate::matrix::Matrix::new([ $( [ $( {
+            crate::num::real::Real($num as f64)
+        } ),* ] ),* ])
+    };
+}
+
+#[macro_export]
+macro_rules! zmatrix {
+    (<$n: literal> $( $( $num:literal ),+ );+) => {
+        crate::matrix::Matrix::new([ $( [ $( {
+            ZMod::<$n>::new($num as usize)
+        } ),* ] ),* ])
+    };
+}
+
 impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     pub const fn new(entries: [[TEntry; C]; R]) -> Self {
         Self { entries }

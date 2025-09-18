@@ -56,3 +56,10 @@ impl<T: Ring + TrueDiv> Field for T {}
 pub trait FromUsize {
     fn from(val: usize) -> Self;
 }
+
+pub trait Sqrt {
+    fn sqrt(&self) -> Self;
+}
+
+pub trait QuadraticClosure: Field + Sqrt {}
+impl<T: Field + Sqrt> QuadraticClosure for T {}

@@ -9,7 +9,7 @@ where
         let mut expr_form = self.clone().cast_into::<Polynomial<TEntry, { N + 1 }>>();
         expr_form = expr_form - SquareMatrix::ident() * Polynomial::new(vec![(TEntry::from(1), 1)]);
         let det = expr_form.determinant();
-        let ungrouped_eigenvals = det.zeros()?;
+        let ungrouped_eigenvals = det.zeros_sized()?;
         let mut eigenvals = vec![];
         for v in ungrouped_eigenvals {
             let mut found = false;
