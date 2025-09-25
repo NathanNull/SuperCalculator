@@ -30,16 +30,8 @@ mod ring_field;
 mod vector_space;
 
 fn main() -> Result<(), &'static str> {
-    let c2: Constructible = r!(2).into();
-    let sqrt2 = c2.sqrt();
-
-    let c3: Constructible = r!(3).into();
-    let sqrt3 = c3.sqrt();
-
-    let sum = sqrt2.clone() * sqrt2 / (sqrt3.clone() * sqrt3);
-
-    let res = sum.test_approx(sum.approx());
-    println!("res: {:?} from {sum:?} using {:?}", res, sum.approx());
+    let v = fmatrix!(3;4;0);
+    println!("Vector magnitude: {:?}", v.magnitude());
 
     Ok(())
 }

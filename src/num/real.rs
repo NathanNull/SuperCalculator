@@ -5,7 +5,7 @@ use std::{
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::ring_field::{FromUsize, Ring, TrueDiv};
+use crate::ring_field::{FromUsize, Ring, Sqrt, TrueDiv};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Real(pub f64);
@@ -119,5 +119,11 @@ impl PartialOrd for Real {
 impl Ord for Real {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.partial_cmp(&other.0).unwrap()
+    }
+}
+
+impl Sqrt for Real {
+    fn sqrt(&self) -> Self {
+        self.sqrt()
     }
 }

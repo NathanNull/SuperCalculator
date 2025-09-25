@@ -366,8 +366,6 @@ impl<TEntry: Field, const DEGREE: usize> Mul for Polynomial<TEntry, DEGREE> {
         for (i, re) in rhs.entries.into_iter().enumerate() {
             for (j, le) in self.entries.iter().enumerate() {
                 if i + j < DEGREE {
-                    // FIXME: we're just dropping terms with degree greater than the max, is this okay?
-                    // I feel like this isn't okay.
                     new_entries[i + j] = new_entries[i + j].clone() + (re.clone() * le.clone());
                 } else if *le != TEntry::additive_ident() && re != TEntry::additive_ident() {
                     panic!("fail lmao @\n{i}\n{le:?}\n{j}\n{re:?}");

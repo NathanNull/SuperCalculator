@@ -7,7 +7,7 @@ use crate::{
     debug_multi::DebugMulti,
     if_trait::{If, True},
     matrix::{ColumnVector, SquareMatrix},
-    ring_field::{Convenient, Field},
+    ring_field::{Convenient, Field, QuadraticClosure},
 };
 
 pub mod subspace;
@@ -32,6 +32,9 @@ pub trait Vector<TEntry: Field, const DIMENSION: usize>:
     }
     fn square_magnitude(&self) -> TEntry {
         self.dot(self)
+    }
+    fn magnitude(&self) -> TEntry where TEntry: QuadraticClosure {
+        self.square_magnitude().sqrt()
     }
     fn project_onto(&self, other: &Self) -> Self {
         other.clone() * (self.dot(other)/other.dot(other))

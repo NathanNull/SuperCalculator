@@ -11,6 +11,7 @@ use crate::{
     ring_field::{Ring, Sqrt, TrueDiv},
 };
 
+// TODO: custom Debug implementation which reforms a legal expression which produces the number that a given polynomial stores.
 #[derive(Hash, Debug, PartialEq, Eq, Clone)]
 pub struct Constructible {
     pub polynomial: UnsizedPolynomial<Rational>,
