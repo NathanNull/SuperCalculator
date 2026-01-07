@@ -13,11 +13,13 @@ use crate::{
 
 // TODO: custom Debug implementation which reforms a legal expression which produces the number that a given polynomial stores.
 #[derive(Hash, Debug, PartialEq, Eq, Clone)]
+#[allow(unused)]
 pub struct Constructible {
     pub polynomial: UnsizedPolynomial<Rational>,
     approx: Real,
 }
 
+#[allow(unused)]
 impl Constructible {
     pub fn from_poly(poly: UnsizedPolynomial<Rational>, approx: Real) -> Self {
         Self {
@@ -180,9 +182,9 @@ impl Neg for Constructible {
                 .map(|(pow, coeff)| {
                     (
                         if pow % 2 == 0 {
-                            coeff.clone()
+                            *coeff
                         } else {
-                            -coeff.clone()
+                            -*coeff
                         },
                         pow,
                     )
@@ -294,7 +296,7 @@ impl Ring for Constructible {
         )
     }
 
-    fn generate(rng: &mut rand::prelude::ThreadRng, basic: bool) -> Self {
+    fn generate(_rng: &mut rand::prelude::ThreadRng, _basic: bool) -> Self {
         todo!("Constructible generation not implemented yet")
     }
 }
@@ -306,7 +308,7 @@ impl Sqrt for Constructible {
                 .entries()
                 .iter()
                 .enumerate()
-                .map(|(pow, coeff)| (coeff.clone(), pow * 2))
+                .map(|(pow, coeff)| (*coeff, pow * 2))
                 .collect(),
         );
         Self {

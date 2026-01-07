@@ -19,10 +19,10 @@ where
     pub fn new(configuration: [[bool; C]; R]) -> Self {
         let mut config_arr = [ZMod::new(0); R * C];
         let mut connect_arr = [[ZMod::new(0); R * C]; R * C];
-        for r in 0..R {
-            for c in 0..C {
+        for (r, col) in configuration.iter().enumerate() {
+            for (c, ele) in col.iter().enumerate() {
                 let ind = r * C + c;
-                config_arr[ind] = if configuration[r][c] {
+                config_arr[ind] = if *ele {
                     ZMod::new(1)
                 } else {
                     ZMod::new(0)
@@ -55,8 +55,8 @@ where
     pub fn make_move(&mut self, row: usize, col: usize) {
         let ind = row * C + col;
         let conns = self.connections.entries[ind];
-        for i in 0..R * C {
-            self.state.entries[i][0] = self.state.entries[i][0] + conns[i];
+        for (i, conn) in conns.iter().enumerate() {
+            self.state.entries[i][0] = self.state.entries[i][0] + *conn;
         }
     }
 

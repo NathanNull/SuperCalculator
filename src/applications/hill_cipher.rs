@@ -41,7 +41,7 @@ pub fn try_break_code<const BLOCK_SIZE: usize>(
         }
     }
 
-    return None;
+    None
 }
 
 pub fn decode<const BLOCK_SIZE: usize>(

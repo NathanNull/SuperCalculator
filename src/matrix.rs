@@ -26,7 +26,7 @@ pub struct Matrix<TEntry: Ring, const R: usize, const C: usize> {
 #[macro_export]
 macro_rules! matrix {
     ($( $( $num:literal $(/$den:literal)? ),+ );+ ) => {
-        crate::matrix::Matrix::new([ $( [ $( {
+        $crate::matrix::Matrix::new([ $( [ $( {
             r!($num $(/$den)?)
         } ),* ] ),* ])
     };
@@ -35,8 +35,8 @@ macro_rules! matrix {
 #[macro_export]
 macro_rules! fmatrix {
     ($( $( $num:expr ),+ );+ ) => {
-        crate::matrix::Matrix::new([ $( [ $( {
-            crate::num::real::Real($num as f64)
+        $crate::matrix::Matrix::new([ $( [ $( {
+            $crate::num::real::Real($num as f64)
         } ),* ] ),* ])
     };
 }
@@ -44,7 +44,7 @@ macro_rules! fmatrix {
 #[macro_export]
 macro_rules! zmatrix {
     (<$n: literal> $( $( $num:literal ),+ );+) => {
-        crate::matrix::Matrix::new([ $( [ $( {
+        $crate::matrix::Matrix::new([ $( [ $( {
             ZMod::<$n>::new($num as usize)
         } ),* ] ),* ])
     };
@@ -83,7 +83,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         }
     }
 
-    pub fn into_unsized<'a>(&'a self) -> UnsizedMatrix<'a, TEntry> {
+    pub fn as_unsized<'a>(&'a self) -> UnsizedMatrix<'a, TEntry> {
         let mut entries = vec![];
         for row in &self.entries {
             let mut v_row = vec![];
@@ -129,7 +129,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
             .map(|f| f.eval(&HashMap::from_iter([("1".to_string(), Function::unit())])));
         let mut vars = [(); R].map(|_| "".to_string());
         let mut n = 0;
-        for v in sol.iter().map(|s| s.variables()).flatten() {
+        for v in sol.iter().flat_map(|s| s.variables()) {
             if !vars.contains(&v) {
                 vars[n] = v;
                 n += 1;
@@ -181,7 +181,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
 
 impl<TEntry: Ring, const R: usize, const C: usize> std::fmt::Debug for Matrix<TEntry, R, C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.into_unsized().fmt(f)
+        self.as_unsized().fmt(f)
     }
 }
 
@@ -202,7 +202,7 @@ pub type SquareMatrix<TEntry, const N: usize> = Matrix<TEntry, N, N>;
 impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
     #[allow(unused)]
     pub fn determinant(&self) -> TEntry {
-        self.into_unsized().determinant()
+        self.as_unsized().determinant()
     }
 
     pub fn ident() -> Self {
@@ -226,7 +226,7 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
                     unreachable!("Determinant was invertible but matrix reduces to non-identity")
                 }
             } else {
-                let unsizedmat = self.into_unsized();
+                let unsizedmat = self.as_unsized();
                 let c: SquareMatrix<TEntry, N> = SquareMatrix::new(array::from_fn(|r| {
                     array::from_fn(|c| unsizedmat.cofactor(c, r)) // transpose
                 }));
@@ -269,7 +269,7 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
         let empty = vec![];
         let size = (
             entries.len(),
-            entries.get(0).unwrap_or_else(|| &empty).len(),
+            entries.first().unwrap_or(&empty).len(),
         );
         for entry in &entries {
             assert_eq!(entry.len(), size.1, "Matrix rows must be the same size");
@@ -313,11 +313,11 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
             }
             let row = &self.entries[rp];
             let mut m_row = vec![];
-            for cp in 0..self.size.1 {
+            for (cp, rcp) in row.iter().enumerate() {
                 if cp == c {
                     continue;
                 }
-                m_row.push(row[cp]);
+                m_row.push(*rcp);
             }
             entries.push(m_row);
         }
@@ -338,7 +338,7 @@ impl<TEntry: Ring> std::fmt::Debug for UnsizedMatrix<'_, TEntry> {
             }))
         });
         let lines = (*self.entries[0][0]).lines().len();
-        for r in 0..self.size.0 {
+        for (r, row) in res.iter().enumerate() {
             for l in 0..lines {
                 write!(
                     f,
@@ -350,8 +350,8 @@ impl<TEntry: Ring> std::fmt::Debug for UnsizedMatrix<'_, TEntry> {
                         _ => "\r\n│",
                     }
                 )?;
-                for c in 0..self.size.1 {
-                    let entry = &res[r][c][l];
+                for cell in row {
+                    let entry = &cell[l];
                     let spaces = " ".repeat(max_len - entry.len());
                     write!(f, " {entry}{spaces} ")?;
                 }

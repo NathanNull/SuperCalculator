@@ -35,7 +35,7 @@ impl Add for Real {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self { 0: self.0 + rhs.0 }
+        Self(self.0 + rhs.0)
     }
 }
 
@@ -43,7 +43,7 @@ impl Sub for Real {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Self { 0: self.0 - rhs.0 }
+        Self(self.0 - rhs.0)
     }
 }
 
@@ -51,7 +51,7 @@ impl Mul for Real {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        Self { 0: self.0 * rhs.0 }
+        Self(self.0 * rhs.0)
     }
 }
 
@@ -59,7 +59,7 @@ impl Div for Real {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        Self { 0: self.0 / rhs.0 }
+        Self(self.0 / rhs.0)
     }
 }
 
@@ -110,6 +110,7 @@ impl FromUsize for Real {
     }
 }
 
+#[allow(clippy::non_canonical_partial_ord_impl)]
 impl PartialOrd for Real {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.partial_cmp(&other.0)

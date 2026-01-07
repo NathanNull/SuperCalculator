@@ -16,12 +16,10 @@ impl<TEntry: Ring> Equation<TEntry> {
     pub fn solve_for(&self, var: &str) -> Option<Function<TEntry>> {
         let neg1 = Box::new(Function::Constant(TEntry::multiplicative_ident().negate()));
         let (mut lh, mut rh) = (self.lhs.clone(), self.rhs.clone());
-        let mut path = match (lh.find(&var), rh.find(&var)) {
+        let mut path = match (lh.find(var), rh.find(var)) {
             (None, None) => panic!("No variable named {var} found"),
             (None, Some(path)) => {
-                let tmp = lh;
-                lh = rh;
-                rh = tmp;
+                std::mem::swap(&mut lh, &mut rh);
                 path
             }
             (Some(path), None) => path,

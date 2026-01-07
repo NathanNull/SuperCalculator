@@ -12,9 +12,9 @@ pub struct ZMod<const N: usize> {
     val: usize,
 }
 
-impl<const N: usize> Into<usize> for ZMod<N> {
-    fn into(self) -> usize {
-        self.val
+impl<const N: usize> From<ZMod<N>> for usize {
+    fn from(val: ZMod<N>) -> usize {
+        val.val
     }
 }
 
@@ -92,8 +92,10 @@ where
     If<{ is_prime(N) }>: True,
 {
     type Output = Self;
-
+    
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, rhs: Self) -> Self::Output {
+        
         self * rhs.inverse()
     }
 }
@@ -114,13 +116,13 @@ const fn is_prime(n: usize) -> bool {
     if n == 2 || n == 3 {
         return true;
     }
-    if n % 2 == 0 || n % 3 == 0 {
+    if n.is_multiple_of(2) || n.is_multiple_of(3) {
         return false;
     }
 
     let mut i = 5;
     while i * i <= n {
-        if n % i == 0 || n % (i + 2) == 0 {
+        if n.is_multiple_of(i) || n.is_multiple_of(i + 2) {
             return false;
         }
         i += 6;
@@ -130,11 +132,11 @@ const fn is_prime(n: usize) -> bool {
 
 fn extended_gcd(a: isize, b: isize) -> (isize, isize, isize) {
     if a == 0 {
-        return (b, 0, 1);
+        (b, 0, 1)
     } else {
         let (g, x1, y1) = extended_gcd(b % a, a);
         let x = y1 - (b / a) * x1;
         let y = x1;
-        return (g, x, y);
+        (g, x, y)
     }
 }

@@ -12,6 +12,7 @@ use crate::{
 
 pub mod subspace;
 
+#[allow(unused)]
 pub trait Vector<TEntry: Field, const DIMENSION: usize>:
     Add<Output = Self> + Mul<TEntry, Output = Self> + Convenient + DebugMulti
 {
@@ -28,7 +29,7 @@ pub trait Vector<TEntry: Field, const DIMENSION: usize>:
         res
     }
     fn triple_product(&self, v: &Self, w: &Self) -> TEntry where Self: Cross<TEntry> + Sized {
-        self.dot(&v.cross(&w))
+        self.dot(&v.cross(w))
     }
     fn square_magnitude(&self) -> TEntry {
         self.dot(self)
@@ -97,9 +98,9 @@ where
 
     fn from_column(column: &ColumnVector<TEntry, { N * N }>) -> Self {
         let mut entries = array::from_fn(|_| array::from_fn(|_| TEntry::additive_ident()));
-        for r in 0..N {
-            for c in 0..N {
-                entries[r][c] = column.entries[r * N + c][0].clone();
+        for (r, row) in entries.iter_mut().enumerate() {
+            for (c, entry) in row.iter_mut().enumerate() {
+                *entry = column.entries[r * N + c][0].clone();
             }
         }
         Self::new(entries)

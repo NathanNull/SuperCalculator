@@ -126,7 +126,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     pub fn try_reduce_to_rref(self) -> Result<(Self, Vec<RowReductionStep<TEntry, R>>), ()> {
         let (mut ref_form, mut ops) = self.try_reduce_to_ref()?;
         let leading_entries = ref_form.entries.each_ref().map(|r| {
-            r.into_iter()
+            r.iter()
                 .enumerate()
                 .find(|(_, v)| **v != TEntry::additive_ident())
                 .map(|(col, _)| col)

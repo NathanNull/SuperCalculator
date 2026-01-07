@@ -16,6 +16,8 @@ use crate::{
     vector_space::Cross as _,
     vector_space::Vector as _,
 };
+
+#[allow(unused)]
 use examples::Examples;
 
 mod applications;

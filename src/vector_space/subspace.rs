@@ -152,8 +152,8 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> std::fmt::Debug
                     _ => "\r\n│",
                 }
             )?;
-            for c in 0..self.vectors.len() {
-                let entry = &res[c][l];
+            for (c, v) in res.iter().enumerate() {
+                let entry = &v[l];
                 let comma = if c == self.vectors.len() - 1 {
                     ""
                 } else if l == lines - 1 {
@@ -163,7 +163,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> std::fmt::Debug
                 };
                 write!(f, "{entry}{comma}")?;
             }
-            if self.vectors.len() == 0 {
+            if self.vectors.is_empty() {
                 write!(f, " ")?;
             }
             write!(

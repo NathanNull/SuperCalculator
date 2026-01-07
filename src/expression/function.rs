@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     ops::{Add, Mul, Sub},
-    usize,
 };
 
 const ALWAYS_BRACKET: bool = false;
@@ -34,7 +33,7 @@ impl<TEntry: Ring> Function<TEntry> {
     pub fn eval(&self, vars: &HashMap<String, Self>) -> Self {
         match self {
             Self::Constant(_) => self.clone(),
-            Self::Variable(v) => vars.get(v).map(|n| n.clone()).unwrap_or(self.clone()),
+            Self::Variable(v) => vars.get(v).cloned().unwrap_or(self.clone()),
 
             Self::Sum(lhs, rhs) | Self::Product(lhs, rhs) => {
                 let (lv, rv) = (lhs.eval(vars), rhs.eval(vars));
@@ -135,10 +134,7 @@ impl<TEntry: Ring> Function<TEntry> {
     }
 
     fn is_constant(&self) -> bool {
-        match self {
-            Self::Constant(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Constant(_))
     }
 
     pub fn as_constant(&self) -> TEntry {
@@ -157,10 +153,7 @@ impl<TEntry: Ring> Function<TEntry> {
     }
 
     fn is_const_sum(&self) -> bool {
-        match self {
-            Self::Sum(a, b) if a.is_constant() || b.is_constant() => true,
-            _ => false,
-        }
+        matches!(self, Self::Sum(a, b) if a.is_constant() || b.is_constant())
     }
 
     pub fn variables(&self) -> Vec<String> {
@@ -170,7 +163,7 @@ impl<TEntry: Ring> Function<TEntry> {
             Self::Sum(l, r) | Self::Product(l, r) => l
                 .variables()
                 .into_iter()
-                .chain(r.variables().into_iter())
+                .chain(r.variables())
                 .collect(),
             Self::Inverse(v) => v.variables(),
         }

@@ -27,6 +27,7 @@ impl std::fmt::Debug for Rational {
     }
 }
 
+#[allow(unused)]
 impl Rational {
     pub const fn new(positive: bool, num: u64, den: u64) -> Self {
         if num == 0 {
@@ -68,7 +69,7 @@ impl Rational {
         for _ in 0..10 {
             guess = (guess + *self / guess) / r!(2);
         }
-        return guess;
+        guess
     }
 }
 
@@ -236,7 +237,7 @@ impl Ring for Rational {
 
 impl From<i32> for Rational {
     fn from(value: i32) -> Self {
-        Self::new(value >= 0, value.abs() as u64, 1)
+        Self::new(value >= 0, value.unsigned_abs() as u64, 1)
     }
 }
 
@@ -249,7 +250,7 @@ impl FromUsize for Rational {
 #[macro_export]
 macro_rules! r {
     ($num:literal $(/$den:literal)? ) => {
-        crate::num::rational::Rational::new($num>=0, if $num<0 {
+        $crate::num::rational::Rational::new($num>=0, if $num<0 {
             -($num as i64)
         } else {
             $num as i64

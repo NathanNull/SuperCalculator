@@ -139,16 +139,16 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize> std::fmt::D
             self.left_matrix
                 .lines()
                 .into_iter()
-                .map(|l| rem_first_last(l))
+                .map(rem_first_last)
                 .collect(),
             self.right_matrix
                 .lines()
                 .into_iter()
-                .map(|l| rem_first_last(l))
+                .map(rem_first_last)
                 .collect(),
         ];
         let lines = res[0].len();
-        for l in 0..lines {
+        for (l, (r0, r1)) in res[0].iter().zip(&res[1]).enumerate() {
             write!(
                 f,
                 "{}",
@@ -159,7 +159,7 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize> std::fmt::D
                     _ => "\r\n│",
                 }
             )?;
-            write!(f, "{}│{}", res[0][l], res[1][l])?;
+            write!(f, "{}│{}", r0, r1)?;
             write!(
                 f,
                 "{}",

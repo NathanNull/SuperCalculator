@@ -12,7 +12,7 @@ impl<const STATES: usize> SimpleMarkovChain<STATES> {
     pub fn new(transitions: [[Rational; STATES]; STATES]) -> Self {
         for r in &transitions {
             assert_eq!(
-                r.clone().into_iter().reduce(|a, b| a + b),
+                (*r).into_iter().reduce(|a, b| a + b),
                 Some(Rational::new(true, 1, 1))
             );
         }

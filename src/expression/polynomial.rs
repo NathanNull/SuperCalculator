@@ -5,7 +5,6 @@ use std::{
     array,
     collections::{HashMap, HashSet},
     ops::{Add, Mul, Sub},
-    usize,
 };
 
 use crate::{
@@ -32,7 +31,7 @@ fn format_term<TEntry: Ring>(coeff: TEntry, pow: usize) -> String {
     }
 
     if pow != 0 {
-        res += &format!("x");
+        res += "x";
         if pow != 1 {
             res += &format!("^{}", pow);
         }
@@ -48,7 +47,7 @@ pub struct Polynomial<TEntry: Ring, const DEGREE: usize> {
 
 impl<TEntry: Ring, const DEGREE: usize> std::fmt::Debug for Polynomial<TEntry, DEGREE> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.into_unsized())
+        write!(f, "{:?}", self.as_unsized())
     }
 }
 
@@ -82,6 +81,7 @@ impl<TEntry: Ring> std::fmt::Debug for UnsizedPolynomial<TEntry> {
     }
 }
 
+#[allow(unused)]
 impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
     pub fn new(prec_entries: Vec<(TEntry, usize)>) -> Self {
         let mut entries = array::from_fn(|_| TEntry::additive_ident());
@@ -97,7 +97,7 @@ impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
                 return i;
             }
         }
-        return 0;
+        0
     }
 
     pub fn highest_degree(&self) -> usize {
@@ -106,7 +106,7 @@ impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
                 return i;
             }
         }
-        return 0;
+        0
     }
 
     pub fn terms(&self) -> [TEntry; DEGREE] {
@@ -125,7 +125,7 @@ impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
         }
     }
 
-    pub fn into_unsized(&self) -> UnsizedPolynomial<TEntry> {
+    pub fn as_unsized(&self) -> UnsizedPolynomial<TEntry> {
         let max_deg = self.highest_degree();
         let mut terms = vec![TEntry::additive_ident(); max_deg];
         for (pow, term) in self.entries.iter().enumerate() {
@@ -140,7 +140,7 @@ pub trait PolynomialSolvable: Field + FromUsize {
     fn zeros_sized<const DEGREE: usize>(
         polynomial: &Polynomial<Self, DEGREE>,
     ) -> Result<Vec<Self>, ()> {
-        Self::zeros(&polynomial.into_unsized())
+        Self::zeros(&polynomial.as_unsized())
     }
 }
 
@@ -157,7 +157,7 @@ impl UnsizedPolynomial<Rational> {
                     )
                 }
             }
-            self.entries = self.entries.into_iter().map(|e| e / tmp_gcf.clone()).collect();
+            self.entries = self.entries.into_iter().map(|e| e / tmp_gcf).collect();
         }
         self
     }
@@ -178,7 +178,7 @@ impl PolynomialSolvable for Rational {
         }
 
         let mut gcd = 1;
-        for (_, c) in poly.entries.iter().enumerate() {
+        for c in poly.entries.iter() {
             gcd = gcf(gcd, c.den());
         }
         let gcd_r = Rational::new(true, gcd, 1);
@@ -311,19 +311,19 @@ impl<TEntry: PolynomialSolvable> UnsizedPolynomial<TEntry> {
     }
 }
 
-impl<TEntry: Field> Into<Function<TEntry>> for (usize, TEntry) {
-    fn into(self) -> Function<TEntry> {
-        let mut res = Function::Constant(self.1);
-        for _ in 0..self.0 {
+impl<TEntry: Field> From<(usize, TEntry)> for Function<TEntry> {
+    fn from(val: (usize, TEntry)) -> Function<TEntry> {
+        let mut res = Function::Constant(val.1);
+        for _ in 0..val.0 {
             res = Function::Product(Box::new(res), Box::new(Function::Variable("x".to_string())));
         }
         res
     }
 }
 
-impl<TEntry: Field, const DEGREE: usize> Into<Function<TEntry>> for Polynomial<TEntry, DEGREE> {
-    fn into(self) -> Function<TEntry> {
-        let mut entry_iter = self.entries.into_iter().enumerate();
+impl<TEntry: Field, const DEGREE: usize> From<Polynomial<TEntry, DEGREE>> for Function<TEntry> {
+    fn from(val: Polynomial<TEntry, DEGREE>) -> Function<TEntry> {
+        let mut entry_iter = val.entries.into_iter().enumerate();
         if let Some(first) = entry_iter.next() {
             let mut f = first.clone().into();
             for next in entry_iter {
@@ -581,9 +581,9 @@ impl<TEntry: Ring> Ring for UnsizedPolynomial<TEntry> {
     }
 }
 
-impl<TEntry: Field> Into<Function<TEntry>> for UnsizedPolynomial<TEntry> {
-    fn into(self) -> Function<TEntry> {
-        let mut entry_iter = self.entries.into_iter().enumerate();
+impl<TEntry: Field> From<UnsizedPolynomial<TEntry>> for Function<TEntry> {
+    fn from(val: UnsizedPolynomial<TEntry>) -> Function<TEntry> {
+        let mut entry_iter = val.entries.into_iter().enumerate();
         if let Some(first) = entry_iter.next() {
             let mut f = first.clone().into();
             for next in entry_iter {
