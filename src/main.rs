@@ -28,6 +28,7 @@ mod expression;
 mod if_trait;
 mod matrix;
 mod num;
+mod repl;
 mod ring_field;
 mod vector_space;
 

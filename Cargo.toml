@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anymap = "0.12.1"
+fancy-regex = "0.17.0"
 itertools = "0.14.0"
 rand = "*"
 reikna = "0.12.3"

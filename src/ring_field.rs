@@ -5,6 +5,8 @@ use std::{
 
 use rand::{rngs::ThreadRng, Rng};
 
+use crate::repl::{Value, ValueType};
+
 pub trait Convenient: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static {}
 impl<T: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static> Convenient for T {}
 
@@ -63,3 +65,9 @@ pub trait Sqrt {
 
 pub trait QuadraticClosure: Field + Sqrt {}
 impl<T: Field + Sqrt> QuadraticClosure for T {}
+
+impl Value for i32 {
+    fn get_type(&self) -> ValueType {
+        ValueType::Integer
+    }
+}
