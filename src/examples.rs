@@ -129,7 +129,7 @@ impl Examples {
                 let m = matrix!(1,0,0;0,1,0;0,0,0);
                 let s = m.column_space();
                 println!("Col(m) contains (1,0,1): {}", s.contains(matrix!(1;0;1)));
-                let s2 = Subspace::new(
+                let s2: Subspace<Rational, 2, matrix::Matrix<Rational, 2, 1>, 3> = Subspace::new(
                     data!((1, 1), (1, 0), (0, 1)).map(|p| ColumnVector::v_new([p.0, p.1])),
                 );
                 println!(

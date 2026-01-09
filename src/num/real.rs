@@ -1,14 +1,19 @@
 use std::{
-    hash::Hash,
-    ops::{Add, Div, Mul, Neg, Sub},
+    fmt::Debug, hash::Hash, ops::{Add, Div, Mul, Neg, Sub}
 };
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::ring_field::{FromUsize, Ring, Sqrt, TrueDiv};
+use crate::{repl::{Value, ValueType}, ring_field::{FromUsize, Ring, Sqrt, TrueDiv, try_field_ops}};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Real(pub f64);
+
+impl Debug for Real {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl Real {
     pub fn sqrt(&self) -> Self {
@@ -68,6 +73,16 @@ impl Neg for Real {
 
     fn neg(self) -> Self::Output {
         Self(-self.0)
+    }
+}
+
+impl Value for Real {
+    fn get_type(&self) -> ValueType {
+        ValueType::Real
+    }
+    
+    fn try_op(&self, op: crate::repl::Op, rhs: Box<dyn Value>) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
+        try_field_ops(self, &*rhs, op).ok_or_else(|| "Invalid real op".into())
     }
 }
 

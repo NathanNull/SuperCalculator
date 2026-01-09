@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use super::{range::Range, tuple::Tuple};
 use crate::p;
 use fancy_regex::Regex;
@@ -5,7 +7,7 @@ use itertools::Itertools;
 use std::{
     ops::{BitAnd, BitOr, Mul, Not, Shl, Shr},
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, Weak},
 };
 
 pub trait ParserFriendly: Clone + Send + Sync {}
@@ -242,23 +244,45 @@ pub trait ParserIterator<Out: Tuple + 'static>: Iterator<Item = MultiParser<Out>
 }
 impl<Out: Tuple + 'static, T: Iterator<Item = MultiParser<Out>>> ParserIterator<Out> for T {}
 
-impl<'a> From<&'a str> for Parser<String> {
+impl<'a> From<&'a str> for Parser<Arc<str>> {
     fn from(value: &'a str) -> Self {
         value.to_string().into()
     }
 }
 
-impl From<String> for Parser<String> {
+impl From<String> for Parser<Arc<str>> {
     fn from(value: String) -> Self {
         value
             .chars()
             .map(Parser::from)
             .to_vec()
-            .map(|chars| chars.into_iter().collect::<String>())
+            .map(|chars| Arc::from(chars.into_iter().collect::<String>().as_str()))
     }
 }
 
-pub fn p_regex(s: impl Into<String>) -> Parser<String> {
+pub struct Recursive<T: 'static> {
+    inner: Weak<Parser<T>>,
+}
+
+impl<T: 'static> Recursive<T> {
+    fn parser(self) -> Parser<T> {
+        MultiParser(Box::new(move |input| {
+            self.inner.upgrade().expect("yeah").parse_raw(input).map(|((out,), res)| (out, res))
+        }))
+    }
+}
+
+pub fn p_recursive<T>(f: impl FnOnce(Parser<T>) -> Parser<T>) -> Parser<T> {
+    let arc = Arc::<Parser<T>>::new_cyclic(|arc| {
+        let rec = Recursive { inner: arc.clone() };
+        f(rec.parser())
+    });
+    MultiParser(Box::new(move |input| {
+        arc.parse_raw(input).map(|((out,), res)| (out, res))
+    }))
+}
+
+pub fn p_regex(s: impl Into<String>) -> Parser<Arc<str>> {
     let regex = Regex::new(&s.into()).expect("Invalid regex argument");
     MultiParser(Box::new(move |input| {
         if let Some(Ok(m)) = regex
@@ -266,7 +290,7 @@ pub fn p_regex(s: impl Into<String>) -> Parser<String> {
             .find(|m| m.as_ref().is_ok_and(|m| m.start() == 0))
         {
             let match_str = m.as_str();
-            Some((match_str.to_string(), &input[match_str.len()..]))
+            Some((Arc::from(match_str), &input[match_str.len()..]))
         } else {
             None
         }

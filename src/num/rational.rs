@@ -5,7 +5,7 @@ use std::{
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::{r, ring_field::{FromUsize, Ring, TrueDiv}};
+use crate::{r, repl::{Value, ValueType}, ring_field::{FromUsize, Ring, TrueDiv, try_field_ops}};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Rational {
@@ -194,6 +194,16 @@ impl Neg for Rational {
             positive: !self.positive,
             ..self
         }
+    }
+}
+
+impl Value for Rational {
+    fn get_type(&self) -> ValueType {
+        ValueType::Rational
+    }
+
+    fn try_op(&self, op: crate::repl::Op, rhs: Box<dyn Value>) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
+        try_field_ops(self, &*rhs, op).ok_or_else(|| "Invalid rational op".into())
     }
 }
 

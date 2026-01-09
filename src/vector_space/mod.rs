@@ -1,20 +1,21 @@
 use std::{
     array,
-    ops::{Add, Mul},
+    ops::{Add, Mul, Sub},
 };
 
 use crate::{
     debug_multi::DebugMulti,
     if_trait::{If, True},
-    matrix::{ColumnVector, SquareMatrix},
-    ring_field::{Convenient, Field, QuadraticClosure},
+    matrix::{ColumnVector, Matrix},
+    repl::{Downcast, Op, Value},
+    ring_field::{Convenient, Field, QuadraticClosure, Ring},
 };
 
 pub mod subspace;
 
 #[allow(unused)]
-pub trait Vector<TEntry: Field, const DIMENSION: usize>:
-    Add<Output = Self> + Mul<TEntry, Output = Self> + Convenient + DebugMulti
+pub trait Vector<TEntry: Ring, const DIMENSION: usize>:
+    Add<Output = Self> + Sub<Output = Self> + Mul<TEntry, Output = Self> + Convenient + DebugMulti
 {
     fn to_column(&self) -> ColumnVector<TEntry, DIMENSION>;
     fn from_column(column: &ColumnVector<TEntry, DIMENSION>) -> Self;
@@ -23,22 +24,31 @@ pub trait Vector<TEntry: Field, const DIMENSION: usize>:
         let col_self = self.to_column();
         let col_other = other.to_column();
         let mut res = TEntry::additive_ident();
-        for ([s],[o]) in col_self.entries.into_iter().zip(col_other.entries) {
+        for ([s], [o]) in col_self.entries.into_iter().zip(col_other.entries) {
             res = res + (s * o);
         }
         res
     }
-    fn triple_product(&self, v: &Self, w: &Self) -> TEntry where Self: Cross<TEntry> + Sized {
+    fn triple_product(&self, v: &Self, w: &Self) -> TEntry
+    where
+        Self: Cross<TEntry> + Sized,
+    {
         self.dot(&v.cross(w))
     }
     fn square_magnitude(&self) -> TEntry {
         self.dot(self)
     }
-    fn magnitude(&self) -> TEntry where TEntry: QuadraticClosure {
+    fn magnitude(&self) -> TEntry
+    where
+        TEntry: QuadraticClosure,
+    {
         self.square_magnitude().sqrt()
     }
-    fn project_onto(&self, other: &Self) -> Self {
-        other.clone() * (self.dot(other)/other.dot(other))
+    fn project_onto(&self, other: &Self) -> Self
+    where
+        TEntry: Field,
+    {
+        other.clone() * (self.dot(other) / other.dot(other))
     }
 }
 
@@ -48,7 +58,7 @@ pub trait Cross<TEntry> {
         Self: Sized;
 }
 
-impl<TEntry: Field, T: Vector<TEntry, 3>> Cross<TEntry> for T {
+impl<TEntry: Ring, T: Vector<TEntry, 3>> Cross<TEntry> for T {
     fn cross(&self, other: &Self) -> Self
     where
         Self: Sized,
@@ -64,7 +74,7 @@ impl<TEntry: Field, T: Vector<TEntry, 3>> Cross<TEntry> for T {
     }
 }
 
-impl<TEntry: Field, const N: usize> Vector<TEntry, N> for ColumnVector<TEntry, N> {
+impl<TEntry: Ring, const N: usize> Vector<TEntry, N> for ColumnVector<TEntry, N> {
     fn to_column(&self) -> ColumnVector<TEntry, N> {
         self.clone()
     }
@@ -77,15 +87,17 @@ impl<TEntry: Field, const N: usize> Vector<TEntry, N> for ColumnVector<TEntry, N
     }
 }
 
-impl<TEntry: Field, const N: usize> Vector<TEntry, { N * N }> for SquareMatrix<TEntry, N>
+impl<TEntry: Ring, const R: usize, const C: usize> Vector<TEntry, { R * C }>
+    for Matrix<TEntry, R, C>
 where
-    If<{ N > 1 }>: True,
+    [(); R * C]:,
+    If<{ C != 1 }>: True,
 {
-    fn to_column(&self) -> ColumnVector<TEntry, { N * N }> {
+    fn to_column(&self) -> ColumnVector<TEntry, { R * C }> {
         let mut entries = array::from_fn(|_| TEntry::additive_ident());
-        for r in 0..N {
-            for c in 0..N {
-                entries[r * N + c] = self.entries[r][c].clone();
+        for r in 0..R {
+            for c in 0..C {
+                entries[r * C + c] = self.entries[r][c].clone();
             }
         }
         ColumnVector::v_new(entries)
@@ -96,13 +108,61 @@ where
         }))
     }
 
-    fn from_column(column: &ColumnVector<TEntry, { N * N }>) -> Self {
+    fn from_column(column: &ColumnVector<TEntry, { R * C }>) -> Self {
         let mut entries = array::from_fn(|_| array::from_fn(|_| TEntry::additive_ident()));
         for (r, row) in entries.iter_mut().enumerate() {
             for (c, entry) in row.iter_mut().enumerate() {
-                *entry = column.entries[r * N + c][0].clone();
+                *entry = column.entries[r * C + c][0].clone();
             }
         }
         Self::new(entries)
+    }
+}
+
+trait CrossVal<TEntry: Ring + Value, const D: usize> {
+    fn try_cross(&self, rhs: &dyn Value, op: Op) -> Option<Box<dyn Value>>;
+}
+
+impl<TEntry: Ring + Value, const D: usize, T: Value + Vector<TEntry, D>> CrossVal<TEntry, D> for T {
+    default fn try_cross(&self, _rhs: &dyn Value, _op: Op) -> Option<Box<dyn Value>> {
+        None
+    }
+}
+
+impl<TEntry: Ring + Value, T: Vector<TEntry, 3> + Value> CrossVal<TEntry, 3> for T {
+    fn try_cross(&self, rhs: &dyn Value, op: Op) -> Option<Box<dyn Value>> {
+        if op == Op::Cross && rhs.get_type() == self.get_type() {
+            let rhs = rhs.downcast::<T>().expect("Downcast error");
+            Some(Box::new(self.cross(rhs)))
+        } else {
+            None
+        }
+    }
+}
+
+pub fn try_vector_ops<TEntry: Ring + Value, const DIM: usize, T: Vector<TEntry, DIM> + Value>(
+    lhs: &T,
+    rhs: &dyn Value,
+    op: Op,
+) -> Option<Box<dyn Value>> {
+    if let Some(res) = lhs.try_cross(rhs, op) {
+        return Some(res);
+    }
+    if rhs.get_type() == lhs.get_type() {
+        let rhs = rhs.downcast::<T>().expect("Downcast error");
+        Some(match op {
+            Op::Add => Box::new(lhs.clone() + rhs.clone()),
+            Op::Sub => Box::new(lhs.clone() - rhs.clone()),
+            Op::Dot => Box::new(lhs.dot(rhs)),
+            _ => return None,
+        })
+    } else if rhs.get_type() == TEntry::additive_ident().get_type() {
+        let rhs = rhs.downcast::<TEntry>().expect("Downcast error");
+        Some(Box::new(match op {
+            Op::Mul => lhs.clone() * rhs.clone(),
+            _ => return None,
+        }))
+    } else {
+        None
     }
 }

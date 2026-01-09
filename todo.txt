@@ -1,0 +1,2 @@
+Make an unsized, owned matrix type (ideally using a single Vec) and rename the existing one to RefMatrix or something. Make repl parse that type
+Add term module and up-arrow functionality to repl
