@@ -14,7 +14,7 @@ impl<TEntry: Ring> Equation<TEntry> {
     }
 
     pub fn solve_for(&self, var: &str) -> Option<Function<TEntry>> {
-        let neg1 = Box::new(Function::Constant(TEntry::multiplicative_ident().negate()));
+        let neg1 = Box::new(Function::Constant(TEntry::one().negate()));
         let (mut lh, mut rh) = (self.lhs.clone(), self.rhs.clone());
         let mut path = match (lh.find(var), rh.find(var)) {
             (None, None) => panic!("No variable named {var} found"),
@@ -67,7 +67,7 @@ impl<TEntry: Ring> Equation<TEntry> {
     }
 
     pub fn equals_zero(&self) -> bool {
-        self.rhs == Function::Constant(TEntry::additive_ident())
+        self.rhs == Function::Constant(TEntry::zero())
     }
 }
 

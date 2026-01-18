@@ -1,7 +1,7 @@
 #![feature(generic_const_exprs, iter_array_chunks, specialization)]
 #![allow(incomplete_features)]
 
-use crate::repl::Repl;
+use crate::num::complex::Complex;
 #[allow(unused)]
 use crate::{
     augmented_matrix::AugmentedMatrix,
@@ -12,6 +12,7 @@ use crate::{
     matrix::Matrix,
     num::constructible::Constructible,
     num::{rational::Rational, real::Real},
+    repl::Repl,
     ring_field::Sqrt,
     ring_field::TrueDiv as _,
     vector_space::Cross as _,

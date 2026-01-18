@@ -104,7 +104,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
     }
 
     pub fn sample(&self, basic: bool) -> TVec {
-        let mut res = TVec::zero();
+        let mut res = TVec::vec_zero();
         let mut rng = rng();
         for v in &self.vectors {
             res = res + v.clone() * TEntry::generate(&mut rng, basic);
@@ -118,7 +118,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
         [(); Self::MAX_DIM]:,
     {
         assert!(self.vectors.len() <= Self::MAX_DIM, "Can't operate on a basis of dimension greater than {:?}", Self::MAX_DIM);
-        let mut vectors: [TVec; Self::MAX_DIM] = array::from_fn(|_| TVec::zero());
+        let mut vectors: [TVec; Self::MAX_DIM] = array::from_fn(|_| TVec::vec_zero());
         for (i, v) in self.vectors.iter().enumerate() {
             vectors[i] = v.clone();
         }
@@ -140,7 +140,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> std::fmt::Debug
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let res: Vec<Vec<String>> = self.vectors.iter().map(|c| c.lines()).collect();
-        let lines = TVec::zero().lines().len();
+        let lines = TVec::vec_zero().lines().len();
         for l in 0..lines {
             write!(
                 f,

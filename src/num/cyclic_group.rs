@@ -74,11 +74,11 @@ impl<const N: usize> Ring for ZMod<N> {
         Self::new(N - self.val)
     }
 
-    fn additive_ident() -> Self {
+    fn zero() -> Self {
         Self::new(0)
     }
 
-    fn multiplicative_ident() -> Self {
+    fn one() -> Self {
         Self::new(1)
     }
 

@@ -48,9 +48,9 @@ impl<TEntry: Ring> Function<TEntry> {
                     (lhs, rhs) => match self {
                         Self::Sum(_, _) => {
                             // Additive identity
-                            if lhs == Self::Constant(TEntry::additive_ident()) {
+                            if lhs == Self::Constant(TEntry::zero()) {
                                 rhs
-                            } else if rhs == Self::Constant(TEntry::additive_ident()) {
+                            } else if rhs == Self::Constant(TEntry::zero()) {
                                 lhs
                             // Additive associativity
                             } else if lhs.is_constant() && rhs.is_const_sum() {
@@ -79,15 +79,15 @@ impl<TEntry: Ring> Function<TEntry> {
                         }
                         Self::Product(_, _) => {
                             // Multiplicative identity
-                            if lhs == Self::Constant(TEntry::multiplicative_ident()) {
+                            if lhs == Self::Constant(TEntry::one()) {
                                 rhs
-                            } else if rhs == Self::Constant(TEntry::multiplicative_ident()) {
+                            } else if rhs == Self::Constant(TEntry::one()) {
                                 lhs
                             // Multiplicative absorption (0)
-                            } else if lhs == Self::Constant(TEntry::additive_ident())
-                                || rhs == Self::Constant(TEntry::additive_ident())
+                            } else if lhs == Self::Constant(TEntry::zero())
+                                || rhs == Self::Constant(TEntry::zero())
                             {
-                                Self::Constant(TEntry::additive_ident())
+                                Self::Constant(TEntry::zero())
                             // Multiplicative absorption
                             } else if lhs.is_const_product() == Some(FunctionPath::Right)
                                 && rhs.is_constant()
@@ -241,7 +241,7 @@ impl<TEntry: Ring> Function<TEntry> {
     }
 
     pub fn unit() -> Self {
-        Self::Constant(TEntry::multiplicative_ident())
+        Self::Constant(TEntry::one())
     }
 }
 
@@ -268,7 +268,7 @@ impl<TEntry: Ring> Sub for Function<TEntry> {
         Self::Sum(
             Box::new(self),
             Box::new(Function::Product(
-                Box::new(Self::Constant(TEntry::multiplicative_ident().negate())),
+                Box::new(Self::Constant(TEntry::one().negate())),
                 Box::new(rhs),
             )),
         )
@@ -312,7 +312,7 @@ impl<TEntry: Field, const DEGREE: usize> TryInto<Polynomial<TEntry, DEGREE>> for
     fn try_into(self) -> Result<Polynomial<TEntry, DEGREE>, Self::Error> {
         match self {
             Self::Constant(c) => Ok(Polynomial::new(vec![(c, 0)])),
-            Self::Variable(_v) => Ok(Polynomial::new(vec![(TEntry::multiplicative_ident(), 1)])),
+            Self::Variable(_v) => Ok(Polynomial::new(vec![(TEntry::one(), 1)])),
             Self::Sum(lhs, rhs) => Ok(TryInto::<Polynomial<_, DEGREE>>::try_into(*lhs)?
                 + TryInto::<Polynomial<_, DEGREE>>::try_into(*rhs)?),
             Self::Product(lhs, rhs) => Ok(TryInto::<Polynomial<TEntry, DEGREE>>::try_into(*lhs)?
@@ -336,17 +336,17 @@ impl<TEntry: Ring> Ring for Function<TEntry> {
 
     fn negate(&self) -> Self {
         Self::Product(
-            Box::new(Self::Constant(TEntry::multiplicative_ident().negate())),
+            Box::new(Self::Constant(TEntry::one().negate())),
             Box::new(self.clone()),
         )
     }
 
-    fn additive_ident() -> Self {
-        Self::Constant(TEntry::additive_ident())
+    fn zero() -> Self {
+        Self::Constant(TEntry::zero())
     }
 
-    fn multiplicative_ident() -> Self {
-        Self::Constant(TEntry::multiplicative_ident())
+    fn one() -> Self {
+        Self::Constant(TEntry::one())
     }
 
     fn generate(rng: &mut rand::prelude::ThreadRng, basic: bool) -> Self {

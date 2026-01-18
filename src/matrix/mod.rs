@@ -3,11 +3,17 @@ use std::{array, collections::HashMap};
 use rand::rngs::ThreadRng;
 
 use crate::{
-    augmented_matrix::AugmentedMatrix, debug_multi::DebugMulti, expression::function::{Function, VARS}, if_trait::{If, True}, repl::{Op, Value, ValueType}, ring_field::{Field, Ring, try_ring_ops}, vector_space::{
+    augmented_matrix::AugmentedMatrix,
+    debug_multi::DebugMulti,
+    expression::function::{Function, VARS},
+    if_trait::{If, True},
+    repl::{Op, Value, ValueType},
+    ring_field::{Field, Ring, try_ring_ops},
+    vector_space::{
         Vector,
         subspace::{Basis, Subspace},
         try_vector_ops,
-    }
+    },
 };
 
 mod eigen;
@@ -58,7 +64,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
 
     pub fn transpose(&self) -> Matrix<TEntry, C, R> {
         let mut t = Matrix::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::additive_ident())
+            array::from_fn(|_| TEntry::zero())
         }));
         for r in 0..R {
             for c in 0..C {
@@ -115,7 +121,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     where
         TEntry: Field,
     {
-        let sol = AugmentedMatrix::new(self.clone(), ColumnVector::zero())
+        let sol = AugmentedMatrix::new(self.clone(), ColumnVector::vec_zero())
             .solve()
             .unwrap()
             .gen_parametric_form(
@@ -140,7 +146,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
                         if tvar == var {
                             Function::Variable(tvar.clone())
                         } else {
-                            Function::Constant(TEntry::additive_ident())
+                            Function::Constant(TEntry::zero())
                         },
                     )
                 })));
@@ -156,10 +162,10 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
 
                         _ => panic!("Unrecognized form {a_str}"),
                     }
-                } else if a == Function::Constant(TEntry::additive_ident()) {
-                    TEntry::additive_ident()
+                } else if a == Function::Constant(TEntry::zero()) {
+                    TEntry::zero()
                 } else if a == Function::Variable(var.clone()) {
-                    TEntry::multiplicative_ident()
+                    TEntry::one()
                 } else {
                     panic!("Unrecognized form {a_str}");
                 }
@@ -204,10 +210,10 @@ impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
 
     pub fn ident() -> Self {
         let mut me = Self::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::additive_ident())
+            array::from_fn(|_| TEntry::zero())
         }));
         for (r, row) in me.entries.iter_mut().enumerate() {
-            row[r] = TEntry::multiplicative_ident()
+            row[r] = TEntry::one()
         }
         me
     }
@@ -236,17 +242,17 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
 
     fn negate(&self) -> Self {
         let mut neg = self.clone();
-        neg.scale(TEntry::multiplicative_ident().negate());
+        neg.scale(TEntry::one().negate());
         neg
     }
 
-    fn additive_ident() -> Self {
+    fn zero() -> Self {
         Self::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::multiplicative_ident())
+            array::from_fn(|_| TEntry::one())
         }))
     }
 
-    fn multiplicative_ident() -> Self {
+    fn one() -> Self {
         Self::ident()
     }
 
@@ -256,6 +262,8 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
         }))
     }
 }
+
+// TODO: Should square matrices be an exponential ring? The square matrix exponential operation is defined but in its canonical form it's an infinite series.
 
 pub struct UnsizedMatrix<'a, TEntry> {
     size: (usize, usize),
@@ -280,7 +288,7 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
             // 1x1 case, just its own value
             return self.entries[0][0].clone();
         }
-        let mut res = TEntry::additive_ident();
+        let mut res = TEntry::zero();
         for col in 0..self.size.0 {
             let cofactor = self.cofactor(0, col);
             res = res + cofactor * self.entries[0][col].clone();
@@ -295,7 +303,7 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
             self.size
         );
 
-        let mut sign = TEntry::multiplicative_ident();
+        let mut sign = TEntry::one();
         if (r + c) % 2 == 1 {
             sign = sign.negate();
         }
@@ -400,7 +408,7 @@ impl<TEntry: Ring + Value, const R: usize, const C: usize> MatRingOp for Matrix<
 impl<TEntry: Ring + Value, const R: usize, const C: usize> MatVecOp for Matrix<TEntry, R, C>
 where
     [(); R * C]:,
-    If<{C != 1}>: True
+    If<{ C != 1 }>: True,
 {
     fn vec_op(
         &self,
@@ -410,8 +418,7 @@ where
         try_vector_ops(self, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
     }
 }
-impl<TEntry: Ring + Value, const N: usize> MatVecOp for ColumnVector<TEntry, N>
-{
+impl<TEntry: Ring + Value, const N: usize> MatVecOp for ColumnVector<TEntry, N> {
     fn vec_op(
         &self,
         op: Op,

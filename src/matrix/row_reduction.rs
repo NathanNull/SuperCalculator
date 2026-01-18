@@ -28,7 +28,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
 
             // Ensure all lower rows have a zero in this column
             for test_row in row + 1..R {
-                if self.entries[test_row][*col] != TEntry::additive_ident() {
+                if self.entries[test_row][*col] != TEntry::zero() {
                     println!("Nonzero entry below leading entry");
                     return false;
                 }
@@ -38,13 +38,13 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         last_pos.is_none()
             || self.entries[0]
                 .iter()
-                .any(|v| *v != TEntry::additive_ident())
+                .any(|v| *v != TEntry::zero())
     }
 
     pub fn is_rref(&self) -> bool {
         for r in R - 1..=0 {
             let mut col = 0;
-            while self.entries[r][col] == TEntry::additive_ident() {
+            while self.entries[r][col] == TEntry::zero() {
                 col += 1;
                 if col >= C {
                     // This is a zero row
@@ -52,14 +52,14 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
                 }
             }
             // Ensure leading entry is a 1 (or equivalent)
-            if self.entries[r][col] != TEntry::multiplicative_ident() {
+            if self.entries[r][col] != TEntry::one() {
                 println!("Leading entry not a 1");
                 return false;
             }
 
             // Ensure all higher rows have a zero in this column
             for test_row in 0..r {
-                if self.entries[test_row][col] != TEntry::additive_ident() {
+                if self.entries[test_row][col] != TEntry::zero() {
                     println!("Nonzero entry above leading entry");
                     return false;
                 }
@@ -79,7 +79,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         let mut pivots = vec![];
         for row in 0..R {
             for col in 0..C {
-                if self.entries[row][col] != TEntry::additive_ident() {
+                if self.entries[row][col] != TEntry::zero() {
                     pivots.push(PivotPosition::new(row, col));
                     break;
                 }
@@ -94,7 +94,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         let mut pivot_col = 0;
         while pivot_col < C && pivot_row < R {
             let nonzero_row_opt =
-                (pivot_row..R).find(|r| self.entries[*r][pivot_col] != TEntry::additive_ident());
+                (pivot_row..R).find(|r| self.entries[*r][pivot_col] != TEntry::zero());
             if let Some(nonzero_row) = nonzero_row_opt {
                 ops.push(Swap {
                     r1: nonzero_row,
@@ -128,7 +128,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
         let leading_entries = ref_form.entries.each_ref().map(|r| {
             r.iter()
                 .enumerate()
-                .find(|(_, v)| **v != TEntry::additive_ident())
+                .find(|(_, v)| **v != TEntry::zero())
                 .map(|(col, _)| col)
         });
         // Every leading entry should now be 1

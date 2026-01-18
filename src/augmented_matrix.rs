@@ -84,11 +84,11 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
         for row in 0..R {
             if self.left_matrix.entries[row]
                 .iter()
-                .find(|v| v != &&TEntry::additive_ident())
+                .find(|v| v != &&TEntry::zero())
                 .is_none()
                 && self.right_matrix.entries[row]
                     .iter()
-                    .find(|v| v != &&TEntry::additive_ident())
+                    .find(|v| v != &&TEntry::zero())
                     .is_some()
             {
                 return Some(false);
@@ -105,7 +105,7 @@ fn map_row_to_function<TEntry: Ring, const L: usize>(
     row.iter()
         .enumerate()
         .map(|(col, v)| {
-            if *v == TEntry::additive_ident() {
+            if *v == TEntry::zero() {
                 // the additive identity is a multiplicative absorbing element
                 Function::Constant(v.clone())
             } else {
@@ -122,7 +122,7 @@ fn map_row_to_function<TEntry: Ring, const L: usize>(
                 Function::Sum(Box::new(acc), Box::new(v))
             }
         })
-        .unwrap_or(Function::Constant(TEntry::additive_ident()))
+        .unwrap_or(Function::Constant(TEntry::zero()))
 }
 
 impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize> std::fmt::Debug

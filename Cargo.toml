@@ -10,3 +10,6 @@ itertools = "0.14.0"
 rand = "*"
 reikna = "0.12.3"
 seq-macro = "0.3.6"
+parce = { git = "https://github.com/NathanNull/parce", version = "0.1.5" }
+console = "0.16.2"
+rustyline = "17.0.2"

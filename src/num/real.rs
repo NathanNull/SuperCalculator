@@ -4,7 +4,7 @@ use std::{
 
 use rand::{rngs::ThreadRng, Rng};
 
-use crate::{repl::{Value, ValueType}, ring_field::{FromUsize, Ring, Sqrt, TrueDiv, try_field_ops}};
+use crate::{repl::{Value, ValueType}, ring_field::{ExponentialRing, FromUsize, Ring, Sqrt, TrueDiv, try_field_ops}};
 
 #[derive(Clone, Copy)]
 pub struct Real(pub f64);
@@ -95,11 +95,11 @@ impl Ring for Real {
         -*self
     }
 
-    fn additive_ident() -> Self {
+    fn zero() -> Self {
         Self(0.)
     }
 
-    fn multiplicative_ident() -> Self {
+    fn one() -> Self {
         Self(1.)
     }
 
@@ -141,5 +141,11 @@ impl Ord for Real {
 impl Sqrt for Real {
     fn sqrt(&self) -> Self {
         self.sqrt()
+    }
+}
+
+impl ExponentialRing for Real {
+    fn exp(self) -> Self {
+        Self(self.0.exp())
     }
 }

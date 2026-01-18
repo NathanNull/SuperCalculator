@@ -1,2 +1,5 @@
 Make an unsized, owned matrix type (ideally using a single Vec) and rename the existing one to RefMatrix or something. Make repl parse that type
-Add term module and up-arrow functionality to repl
+-> optional: change a bunch of datatypes to be dynamic size, with const-sized wrapper types in place of their originals (Vector is potentially a good example of this)
+Functions (prob not user-defined ones tho)
+Operator precedence
+Go through and make a list of all the types and operations I want to include in the repl, and make a proper grammar for the thing

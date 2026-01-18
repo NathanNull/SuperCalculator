@@ -35,7 +35,7 @@ impl<const STATES: usize> SimpleMarkovChain<STATES> {
             let sum = scaled_state
                 .entries
                 .iter()
-                .fold(Rational::additive_ident(), |acc, r| acc + r[0]);
+                .fold(Rational::zero(), |acc, r| acc + r[0]);
             Some(*scaled_state * sum.inverse())
         } else {
             None

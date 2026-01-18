@@ -7,6 +7,7 @@ pub enum ValueType {
     Integer,
     Rational,
     Real,
+    Complex,
     Void,
     Matrix(usize, usize),
 }

@@ -70,7 +70,7 @@ fn resultant(
     let deg_g = g.entries().len() - 1;
 
     let mut rows = vec![];
-    let zero = UnsizedPolynomial::additive_ident();
+    let zero = UnsizedPolynomial::zero();
 
     let f_coeffs = (0..=deg_f)
         .map(|i| &f.entries()[deg_f - i])
@@ -272,7 +272,7 @@ impl Div for Constructible {
 
 impl TrueDiv for Constructible {
     fn inverse(&self) -> Self {
-        Self::multiplicative_ident() / self.clone()
+        Self::one() / self.clone()
     }
 }
 
@@ -285,11 +285,11 @@ impl Ring for Constructible {
         -self.clone()
     }
 
-    fn additive_ident() -> Self {
+    fn zero() -> Self {
         Self::from_poly(UnsizedPolynomial::new(vec![(r!(1), 1)]), Real(0.0))
     }
 
-    fn multiplicative_ident() -> Self {
+    fn one() -> Self {
         Self::from_poly(
             UnsizedPolynomial::new(vec![(r!(1), 1), (r!(-1), 0)]),
             Real(1.0),

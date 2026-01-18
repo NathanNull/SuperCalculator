@@ -19,11 +19,11 @@ pub trait Vector<TEntry: Ring, const DIMENSION: usize>:
 {
     fn to_column(&self) -> ColumnVector<TEntry, DIMENSION>;
     fn from_column(column: &ColumnVector<TEntry, DIMENSION>) -> Self;
-    fn zero() -> Self;
+    fn vec_zero() -> Self;
     fn dot(&self, other: &Self) -> TEntry {
         let col_self = self.to_column();
         let col_other = other.to_column();
-        let mut res = TEntry::additive_ident();
+        let mut res = TEntry::zero();
         for ([s], [o]) in col_self.entries.into_iter().zip(col_other.entries) {
             res = res + (s * o);
         }
@@ -78,8 +78,8 @@ impl<TEntry: Ring, const N: usize> Vector<TEntry, N> for ColumnVector<TEntry, N>
     fn to_column(&self) -> ColumnVector<TEntry, N> {
         self.clone()
     }
-    fn zero() -> Self {
-        Self::v_new(array::from_fn(|_| TEntry::additive_ident()))
+    fn vec_zero() -> Self {
+        Self::v_new(array::from_fn(|_| TEntry::zero()))
     }
 
     fn from_column(column: &ColumnVector<TEntry, N>) -> Self {
@@ -94,7 +94,7 @@ where
     If<{ C != 1 }>: True,
 {
     fn to_column(&self) -> ColumnVector<TEntry, { R * C }> {
-        let mut entries = array::from_fn(|_| TEntry::additive_ident());
+        let mut entries = array::from_fn(|_| TEntry::zero());
         for r in 0..R {
             for c in 0..C {
                 entries[r * C + c] = self.entries[r][c].clone();
@@ -102,14 +102,14 @@ where
         }
         ColumnVector::v_new(entries)
     }
-    fn zero() -> Self {
+    fn vec_zero() -> Self {
         Self::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::additive_ident())
+            array::from_fn(|_| TEntry::zero())
         }))
     }
 
     fn from_column(column: &ColumnVector<TEntry, { R * C }>) -> Self {
-        let mut entries = array::from_fn(|_| array::from_fn(|_| TEntry::additive_ident()));
+        let mut entries = array::from_fn(|_| array::from_fn(|_| TEntry::zero()));
         for (r, row) in entries.iter_mut().enumerate() {
             for (c, entry) in row.iter_mut().enumerate() {
                 *entry = column.entries[r * C + c][0].clone();
@@ -156,7 +156,7 @@ pub fn try_vector_ops<TEntry: Ring + Value, const DIM: usize, T: Vector<TEntry, 
             Op::Dot => Box::new(lhs.dot(rhs)),
             _ => return None,
         })
-    } else if rhs.get_type() == TEntry::additive_ident().get_type() {
+    } else if rhs.get_type() == TEntry::zero().get_type() {
         let rhs = rhs.downcast::<TEntry>().expect("Downcast error");
         Some(Box::new(match op {
             Op::Mul => lhs.clone() * rhs.clone(),

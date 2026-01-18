@@ -63,7 +63,7 @@ impl Rational {
 
     pub fn approx_sqrt(&self) -> Self {
         if !self.positive {
-            return Self::additive_ident()
+            return Self::zero()
         }
         let mut guess = Self::new(true, self.num.isqrt(), self.den.isqrt());
         for _ in 0..10 {
@@ -219,7 +219,7 @@ impl Ring for Rational {
         }
     }
 
-    fn additive_ident() -> Self {
+    fn zero() -> Self {
         Self {
             positive: true,
             num: 0,
@@ -227,7 +227,7 @@ impl Ring for Rational {
         }
     }
 
-    fn multiplicative_ident() -> Self {
+    fn one() -> Self {
         Self {
             positive: true,
             num: 1,

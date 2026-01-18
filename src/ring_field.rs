@@ -13,8 +13,8 @@ impl<T: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static> Con
 pub trait Ring: Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Convenient {
     fn try_inverse(&self) -> Option<Self>;
     fn negate(&self) -> Self;
-    fn additive_ident() -> Self;
-    fn multiplicative_ident() -> Self;
+    fn zero() -> Self;
+    fn one() -> Self;
     fn generate(rng: &mut ThreadRng, basic: bool) -> Self;
 }
 
@@ -31,11 +31,11 @@ impl Ring for i32 {
         -self
     }
 
-    fn additive_ident() -> Self {
+    fn zero() -> Self {
         0
     }
 
-    fn multiplicative_ident() -> Self {
+    fn one() -> Self {
         1
     }
 
@@ -101,10 +101,21 @@ pub fn try_field_ops<T: Field + Value>(lhs: &T, rhs: &dyn Value, op: Op) -> Opti
     if rhs.get_type() == lhs.get_type() {
         let rhs = rhs.downcast::<T>().expect("Downcast error");
         Some(Box::new(match op {
-            Op::Div => lhs.clone() + rhs.clone(),
+            Op::Div => lhs.clone() / rhs.clone(),
             _ => return None,
         }))
     } else {
         None
+    }
+}
+
+/// Requires that exp(a+b)=exp(a)*exp(b)
+pub trait ExponentialRing: Ring {
+    fn exp(self) -> Self;
+}
+
+impl ExponentialRing for i32 {
+    fn exp(self) -> Self {
+        (-1i32).pow(((self%2) + 2) as u32)
     }
 }

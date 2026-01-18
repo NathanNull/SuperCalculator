@@ -48,7 +48,7 @@ where
     pub fn try_diagonalize(&self) -> Option<(Self, Self)> {
         if let Ok(eigenvalues) = self.eigenvalues() {
             let mut vals: [TEntry; N] = array::from_fn(|_| TEntry::from(0));
-            let mut vecs = vals.each_ref().map(|_| ColumnVector::zero());
+            let mut vecs = vals.each_ref().map(|_| ColumnVector::vec_zero());
             let mut num_found = 0;
             for (eigenvalue, mult) in eigenvalues {
                 let eigenspace = self.eigenspace(eigenvalue.clone());

@@ -22,9 +22,9 @@ use super::function::Function;
 
 fn format_term<TEntry: Ring>(coeff: TEntry, pow: usize) -> String {
     let mut res = "".to_string();
-    if coeff == TEntry::multiplicative_ident() && pow != 0 {
+    if coeff == TEntry::one() && pow != 0 {
         // do nothing
-    } else if coeff == TEntry::multiplicative_ident().negate() && pow != 0 {
+    } else if coeff == TEntry::one().negate() && pow != 0 {
         res += "-";
     } else {
         res += &format!("{:?}", coeff);
@@ -59,7 +59,7 @@ impl<TEntry: Ring> std::fmt::Debug for UnsizedPolynomial<TEntry> {
             .iter()
             .enumerate()
             .rev()
-            .filter(|(_, t)| t != &&TEntry::additive_ident())
+            .filter(|(_, t)| t != &&TEntry::zero())
             .map(|(i, t)| format_term(t.clone(), i))
             .collect::<Vec<_>>();
         let mut wrote = false;
@@ -84,7 +84,7 @@ impl<TEntry: Ring> std::fmt::Debug for UnsizedPolynomial<TEntry> {
 #[allow(unused)]
 impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
     pub fn new(prec_entries: Vec<(TEntry, usize)>) -> Self {
-        let mut entries = array::from_fn(|_| TEntry::additive_ident());
+        let mut entries = array::from_fn(|_| TEntry::zero());
         for entry in prec_entries {
             entries[entry.1] = entries[entry.1].clone() + entry.0;
         }
@@ -93,7 +93,7 @@ impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
 
     fn lowest_degree(&self) -> usize {
         for (i, coeff) in self.entries.iter().enumerate() {
-            if coeff != &TEntry::additive_ident() {
+            if coeff != &TEntry::zero() {
                 return i;
             }
         }
@@ -102,7 +102,7 @@ impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
 
     pub fn highest_degree(&self) -> usize {
         for (i, coeff) in self.entries.iter().enumerate().rev() {
-            if coeff != &TEntry::additive_ident() {
+            if coeff != &TEntry::zero() {
                 return i;
             }
         }
@@ -119,7 +119,7 @@ impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
                 if i < DEGREE {
                     self.entries[i].clone()
                 } else {
-                    TEntry::additive_ident()
+                    TEntry::zero()
                 }
             }),
         }
@@ -127,7 +127,7 @@ impl<TEntry: Ring, const DEGREE: usize> Polynomial<TEntry, DEGREE> {
 
     pub fn as_unsized(&self) -> UnsizedPolynomial<TEntry> {
         let max_deg = self.highest_degree();
-        let mut terms = vec![TEntry::additive_ident(); max_deg];
+        let mut terms = vec![TEntry::zero(); max_deg + 1];
         for (pow, term) in self.entries.iter().enumerate() {
             terms[pow] = term.clone();
         }
@@ -213,7 +213,7 @@ impl PolynomialSolvable for Rational {
                     map.insert("x".to_string(), Function::Constant(v));
                     // if f(p/q) = 0
                     while Into::<Function<Rational>>::into(tmp_f.clone()).eval(&map)
-                        == Function::Constant(Rational::additive_ident())
+                        == Function::Constant(Rational::zero())
                     {
                         zeros.push(v);
                         tmp_f = tmp_f.synthetic_divide(v)?.try_factor_constant();
@@ -265,17 +265,17 @@ impl<TEntry: PolynomialSolvable> UnsizedPolynomial<TEntry> {
 
     pub fn synthetic_divide(&self, val: TEntry) -> Result<Self, ()> {
         let max_deg = self.entries.len() - 1;
-        let mut carry = TEntry::additive_ident();
-        let mut bottom_line = vec![TEntry::additive_ident(); max_deg + 1];
+        let mut carry = TEntry::zero();
+        let mut bottom_line = vec![TEntry::zero(); max_deg + 1];
         for d in (0..=max_deg).rev() {
             let top = self.entries[d].clone();
             carry = top + carry * val.clone();
             bottom_line[d] = carry.clone();
         }
-        if carry == TEntry::additive_ident() {
+        if carry == TEntry::zero() {
             let mut entries = vec![];
             for (deg, coeff) in bottom_line.into_iter().enumerate() {
-                if coeff != TEntry::additive_ident() {
+                if coeff != TEntry::zero() {
                     entries.push((coeff, deg - 1))
                 }
             }
@@ -303,7 +303,7 @@ impl<TEntry: PolynomialSolvable> UnsizedPolynomial<TEntry> {
         let self_val = Into::<Function<TEntry>>::into(self.clone())
             .eval(var_map)
             .as_constant();
-        if deriv_val == TEntry::additive_ident() {
+        if deriv_val == TEntry::zero() {
             val
         } else {
             val - (self_val / deriv_val)
@@ -331,7 +331,7 @@ impl<TEntry: Field, const DEGREE: usize> From<Polynomial<TEntry, DEGREE>> for Fu
             }
             f
         } else {
-            Function::Constant(TEntry::additive_ident())
+            Function::Constant(TEntry::zero())
         }
     }
 }
@@ -362,12 +362,12 @@ impl<TEntry: Field, const DEGREE: usize> Mul for Polynomial<TEntry, DEGREE> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        let mut new_entries = array::from_fn(|_| TEntry::additive_ident());
+        let mut new_entries = array::from_fn(|_| TEntry::zero());
         for (i, re) in rhs.entries.into_iter().enumerate() {
             for (j, le) in self.entries.iter().enumerate() {
                 if i + j < DEGREE {
                     new_entries[i + j] = new_entries[i + j].clone() + (re.clone() * le.clone());
-                } else if *le != TEntry::additive_ident() && re != TEntry::additive_ident() {
+                } else if *le != TEntry::zero() && re != TEntry::zero() {
                     panic!("fail lmao @\n{i}\n{le:?}\n{j}\n{re:?}");
                 }
             }
@@ -399,12 +399,12 @@ impl<TEntry: Field, const DEGREE: usize> Ring for Polynomial<TEntry, DEGREE> {
         )
     }
 
-    fn additive_ident() -> Self {
+    fn zero() -> Self {
         Self::new(vec![])
     }
 
-    fn multiplicative_ident() -> Self {
-        Self::new(vec![(TEntry::multiplicative_ident(), 0)])
+    fn one() -> Self {
+        Self::new(vec![(TEntry::one(), 0)])
     }
 
     fn generate(rng: &mut rand::prelude::ThreadRng, basic: bool) -> Self {
@@ -449,7 +449,7 @@ impl<TEntry: Field, const DEGREE: usize> Vector<TEntry, DEGREE> for Polynomial<T
         ColumnVector::v_new(self.entries.clone())
     }
 
-    fn zero() -> Self {
+    fn vec_zero() -> Self {
         Self::new(vec![])
     }
 
@@ -481,7 +481,7 @@ impl<TEntry: Ring> UnsizedPolynomial<TEntry> {
 
     pub fn new(prec_entries: Vec<(TEntry, usize)>) -> Self {
         let mut entries = vec![
-            TEntry::additive_ident();
+            TEntry::zero();
             prec_entries.iter().map(|(_, p)| *p).max().unwrap_or(0) + 1
         ];
         for entry in prec_entries {
@@ -546,7 +546,7 @@ impl<TEntry: Ring> Mul for UnsizedPolynomial<TEntry> {
             for (j, rv) in rhs.entries.iter().enumerate() {
                 let pow = i + j;
                 if res.len() <= pow {
-                    res.push(TEntry::additive_ident());
+                    res.push(TEntry::zero());
                 }
                 res[pow] = res[pow].clone() + (lv.clone() * rv.clone())
             }
@@ -566,13 +566,13 @@ impl<TEntry: Ring> Ring for UnsizedPolynomial<TEntry> {
         }
     }
 
-    fn additive_ident() -> Self {
+    fn zero() -> Self {
         Self { entries: vec![] }
     }
 
-    fn multiplicative_ident() -> Self {
+    fn one() -> Self {
         Self {
-            entries: vec![TEntry::multiplicative_ident()],
+            entries: vec![TEntry::one()],
         }
     }
 
@@ -591,7 +591,7 @@ impl<TEntry: Field> From<UnsizedPolynomial<TEntry>> for Function<TEntry> {
             }
             f
         } else {
-            Function::Constant(TEntry::additive_ident())
+            Function::Constant(TEntry::zero())
         }
     }
 }
