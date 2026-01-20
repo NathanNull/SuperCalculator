@@ -4,7 +4,11 @@ use std::{
 };
 
 use crate::{
-    matrix::ColumnVector, num::real::Real, repl::{Value, ValueType}, ring_field::{ExponentialRing, Field, Ring, TrueDiv, try_field_ops}, vector_space::Vector
+    matrix::ColumnVector,
+    num::real::Real,
+    repl::{Value, ValueType},
+    ring_field::{ExponentialRing, Field, FieldOps, Ring, TrueDiv},
+    vector_space::Vector,
 };
 
 #[derive(Hash, PartialEq, Eq, Clone)]
@@ -24,7 +28,13 @@ impl Complex {
 
 impl Debug for Complex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}{}{:?}i", self.real, if self.imag.0 < 0. {""} else {"+"}, self.imag)
+        write!(
+            f,
+            "{:?}{}{:?}i",
+            self.real,
+            if self.imag.0 < 0. { "" } else { "+" },
+            self.imag
+        )
     }
 }
 
@@ -155,7 +165,12 @@ impl Value for Complex {
         ValueType::Complex
     }
 
-    fn try_op(&self, op: crate::repl::Op, rhs: Box<dyn Value>) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        try_field_ops(self, rhs.as_ref(), op).ok_or_else(|| "invalid op".into())
+    fn try_op(
+        &self,
+        op: crate::repl::Op,
+        rhs: Box<dyn Value>,
+    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
+        self.try_field_ops(rhs.as_ref(), op)
+            .ok_or_else(|| "invalid op".into())
     }
 }

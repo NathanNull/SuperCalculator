@@ -1,10 +1,15 @@
 use std::{
-    fmt::Debug, hash::Hash, ops::{Add, Div, Mul, Neg, Sub}
+    fmt::Debug,
+    hash::Hash,
+    ops::{Add, Div, Mul, Neg, Sub},
 };
 
-use rand::{rngs::ThreadRng, Rng};
+use rand::{Rng, rngs::ThreadRng};
 
-use crate::{repl::{Value, ValueType}, ring_field::{ExponentialRing, FromUsize, Ring, Sqrt, TrueDiv, try_field_ops}};
+use crate::{
+    repl::{Value, ValueType},
+    ring_field::{ExponentialRing, FieldOps, FromUsize, Ring, Sqrt, TrueDiv},
+};
 
 #[derive(Clone, Copy)]
 pub struct Real(pub f64);
@@ -80,9 +85,14 @@ impl Value for Real {
     fn get_type(&self) -> ValueType {
         ValueType::Real
     }
-    
-    fn try_op(&self, op: crate::repl::Op, rhs: Box<dyn Value>) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        try_field_ops(self, &*rhs, op).ok_or_else(|| "Invalid real op".into())
+
+    fn try_op(
+        &self,
+        op: crate::repl::Op,
+        rhs: Box<dyn Value>,
+    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
+        self.try_field_ops(&*rhs, op)
+            .ok_or_else(|| "Invalid real op".into())
     }
 }
 

@@ -1,7 +1,6 @@
 #![feature(generic_const_exprs, iter_array_chunks, specialization)]
 #![allow(incomplete_features)]
 
-use crate::num::complex::Complex;
 #[allow(unused)]
 use crate::{
     augmented_matrix::AugmentedMatrix,

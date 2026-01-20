@@ -1,19 +1,13 @@
-use std::{array, collections::HashMap};
+use std::{array, collections::HashMap, error::Error};
 
 use rand::rngs::ThreadRng;
 
 use crate::{
-    augmented_matrix::AugmentedMatrix,
-    debug_multi::DebugMulti,
-    expression::function::{Function, VARS},
-    if_trait::{If, True},
-    repl::{Op, Value, ValueType},
-    ring_field::{Field, Ring, try_ring_ops},
-    vector_space::{
+    augmented_matrix::AugmentedMatrix, debug_multi::DebugMulti, expression::function::{Function, VARS}, if_trait::{If, True}, repl::{Op, Value, ValueType}, ring_field::{Field, Ring, RingOps}, try_ops_trait, vector_space::{
         Vector,
         subspace::{Basis, Subspace},
         try_vector_ops,
-    },
+    }
 };
 
 mod eigen;
@@ -63,9 +57,7 @@ impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
     }
 
     pub fn transpose(&self) -> Matrix<TEntry, C, R> {
-        let mut t = Matrix::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::zero())
-        }));
+        let mut t = Matrix::new(array::from_fn(|_| array::from_fn(|_| TEntry::zero())));
         for r in 0..R {
             for c in 0..C {
                 t.entries[c][r] = self.entries[r][c].clone();
@@ -209,9 +201,7 @@ impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
     }
 
     pub fn ident() -> Self {
-        let mut me = Self::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::zero())
-        }));
+        let mut me = Self::new(array::from_fn(|_| array::from_fn(|_| TEntry::zero())));
         for (r, row) in me.entries.iter_mut().enumerate() {
             row[r] = TEntry::one()
         }
@@ -247,9 +237,7 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
     }
 
     fn zero() -> Self {
-        Self::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::one())
-        }))
+        Self::new(array::from_fn(|_| array::from_fn(|_| TEntry::one())))
     }
 
     fn one() -> Self {
@@ -375,68 +363,31 @@ impl<TEntry: Ring> std::fmt::Debug for UnsizedMatrix<'_, TEntry> {
 
 // Specialization gaming
 // Thanks I hate it
-trait MatVecOp {
-    fn vec_op(&self, op: Op, rhs: &dyn Value)
-    -> Result<Box<dyn Value>, Box<dyn std::error::Error>>;
-}
-trait MatRingOp {
-    fn ring_op(
-        &self,
-        op: Op,
-        rhs: &dyn Value,
-    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>>;
-}
 
-impl<TEntry: Ring + Value, const R: usize, const C: usize> MatVecOp for Matrix<TEntry, R, C> {
-    default fn vec_op(
-        &self,
-        _op: Op,
-        _rhs: &dyn Value,
-    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        Err("Invalid matrix operation".into())
+try_ops_trait!(trait MatVecOp {
+    fn vec_op(&self, op: Op, rhs: &dyn Value) -> Result<Box<dyn Value>, Box<dyn Error>> {
+        if ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = Matrix<TEntry, R, C>, [(); R * C]:, If<{ C != 1 }>: True) {
+            |lhs, op, rhs| try_vector_ops(lhs, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
+        } else if ([TEntry: Ring + Value, const N: usize]: Self = ColumnVector<TEntry, N>,) {
+            |lhs, op, rhs| try_vector_ops(lhs, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
+        } else ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = Matrix<TEntry, R, C>,) {
+            |_,_,_|Err("Invalid matrix operation".into())
+        }
     }
-}
-impl<TEntry: Ring + Value, const R: usize, const C: usize> MatRingOp for Matrix<TEntry, R, C> {
-    default fn ring_op(
-        &self,
-        _op: Op,
-        _rhs: &dyn Value,
-    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        Err("Invalid matrix operation".into())
-    }
-}
-impl<TEntry: Ring + Value, const R: usize, const C: usize> MatVecOp for Matrix<TEntry, R, C>
-where
-    [(); R * C]:,
-    If<{ C != 1 }>: True,
-{
-    fn vec_op(
-        &self,
-        op: Op,
-        rhs: &dyn Value,
-    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        try_vector_ops(self, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
-    }
-}
-impl<TEntry: Ring + Value, const N: usize> MatVecOp for ColumnVector<TEntry, N> {
-    fn vec_op(
-        &self,
-        op: Op,
-        rhs: &dyn Value,
-    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        try_vector_ops(self, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
-    }
-}
-
-impl<TEntry: Ring + Value, const N: usize> MatRingOp for SquareMatrix<TEntry, N> {
+});
+try_ops_trait!(trait MatRingOp {
     fn ring_op(
         &self,
         op: Op,
         rhs: &dyn Value,
     ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        try_ring_ops(self, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
+        if ([TEntry: Ring + Value, const N: usize]: Self = SquareMatrix<TEntry, N>,) {
+            |lhs: &Self, op, rhs|lhs.try_ring_ops(rhs, op).ok_or_else(|| "Invalid matrix operation".into())
+        } else ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = Matrix<TEntry, R, C>,) {
+            |_,_,_|Err("Invalid matrix operation".into())
+        }
     }
-}
+});
 
 impl<TEntry: Ring + Value, const R: usize, const C: usize> Value for Matrix<TEntry, R, C> {
     fn get_type(&self) -> ValueType {

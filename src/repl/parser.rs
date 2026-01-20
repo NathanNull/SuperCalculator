@@ -60,10 +60,10 @@ static P_VAL: LockedParser<(Box<dyn Value>,)> = LazyLock::new(|| {
         parser!((!"c[") & (WHITESPACE.clone()) & p_complex_inner & (WHITESPACE.clone()) & (!']'));
 
     let p_num = parser!(
-        (p_real.map(|r| r.into_box()))
-            | (p_rational.map(|r| r.into_box()))
-            | (p_integer.map(|r| r.into_box()))
-            | (p_complex.map(|r| r.into_box()))
+        (p_real.map(|r| r.box_clone()))
+            | (p_rational.map(|r| r.box_clone()))
+            | (p_integer.map(|r| r.box_clone()))
+            | (p_complex.map(|r| r.box_clone()))
     );
     let p_array = parser![
         (!'['),
@@ -106,7 +106,7 @@ static P_VAL: LockedParser<(Box<dyn Value>,)> = LazyLock::new(|| {
                 if rows == R && cols == C {
                     return match entry {
                         Some(ValueType::Integer) | None => {
-                            Some(Matrix::<i32, R, C>::new(array::from_fn(|r|array::from_fn(|c|*vals[r][c].downcast::<i32>().unwrap()))).into_box())
+                            Some(Matrix::<i32, R, C>::new(array::from_fn(|r|array::from_fn(|c|*vals[r][c].downcast::<i32>().unwrap()))).box_clone())
                         }
                         Some(ValueType::Real) => {
                             Some(Matrix::<Real, R, C>::new(array::from_fn(|r|array::from_fn(|c|*vals[r][c].downcast::<Real>().unwrap()))).box_clone())

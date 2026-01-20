@@ -3,9 +3,13 @@ use std::{
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
-use rand::{rngs::ThreadRng, Rng};
+use rand::{Rng, rngs::ThreadRng};
 
-use crate::{r, repl::{Value, ValueType}, ring_field::{FromUsize, Ring, TrueDiv, try_field_ops}};
+use crate::{
+    r,
+    repl::{Value, ValueType},
+    ring_field::{FieldOps, FromUsize, Ring, TrueDiv},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Rational {
@@ -63,7 +67,7 @@ impl Rational {
 
     pub fn approx_sqrt(&self) -> Self {
         if !self.positive {
-            return Self::zero()
+            return Self::zero();
         }
         let mut guess = Self::new(true, self.num.isqrt(), self.den.isqrt());
         for _ in 0..10 {
@@ -202,8 +206,12 @@ impl Value for Rational {
         ValueType::Rational
     }
 
-    fn try_op(&self, op: crate::repl::Op, rhs: Box<dyn Value>) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        try_field_ops(self, &*rhs, op).ok_or_else(|| "Invalid rational op".into())
+    fn try_op(
+        &self,
+        op: crate::repl::Op,
+        rhs: Box<dyn Value>,
+    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
+        self.try_field_ops(&*rhs, op).ok_or_else(|| "Invalid rational op".into())
     }
 }
 

@@ -3,3 +3,4 @@ Make an unsized, owned matrix type (ideally using a single Vec) and rename the e
 Functions (prob not user-defined ones tho)
 Operator precedence
 Go through and make a list of all the types and operations I want to include in the repl, and make a proper grammar for the thing
+Add some documentation, otherwise nobody is going to understand this thing
