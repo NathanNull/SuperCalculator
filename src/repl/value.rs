@@ -9,7 +9,7 @@ pub enum ValueType {
     Real,
     Complex,
     Void,
-    Matrix(usize, usize),
+    Matrix(Box<ValueType>, usize, usize),
 }
 
 pub trait ValueClone<'a> {

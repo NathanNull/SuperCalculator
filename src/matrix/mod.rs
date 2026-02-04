@@ -1,29 +1,351 @@
-use std::{array, collections::HashMap, error::Error};
+use std::{
+    array,
+    collections::HashMap,
+    error::Error,
+    ops::{Add, Mul, Sub},
+};
 
+use itertools::Itertools;
 use rand::rngs::ThreadRng;
 
 use crate::{
-    augmented_matrix::AugmentedMatrix, debug_multi::DebugMulti, expression::function::{Function, VARS}, if_trait::{If, True}, repl::{Op, Value, ValueType}, ring_field::{Field, Ring, RingOps}, try_ops_trait, vector_space::{
+    augmented_matrix::AugmentedMatrix,
+    debug_multi::DebugMulti,
+    expression::function::{Function, VARS},
+    repl::{Op, Value, ValueType},
+    ring_field::{Convenient, Field, Ring, RingOps},
+    try_ops_trait,
+    vector_space::{
         Vector,
         subspace::{Basis, Subspace},
         try_vector_ops,
-    }
+    },
 };
 
 mod eigen;
 mod ops;
 mod row_reduction;
+pub use row_reduction::RowReduction;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Matrix<TEntry: Ring, const R: usize, const C: usize> {
-    pub entries: [[TEntry; C]; R],
+pub trait Matrix<TEntry: Ring>:
+    Convenient + Add<Output = Self> + Sub<Output = Self> + Mul<TEntry, Output = Self>
+{
+    fn set_entry(&mut self, row: usize, col: usize, entry: TEntry);
+    fn get_entry(&self, row: usize, col: usize) -> Option<&TEntry>;
+    fn get_mut_entry(&mut self, row: usize, col: usize) -> Option<&mut TEntry>;
+    fn size(&self) -> (usize, usize);
+
+    type Transpose: Matrix<TEntry>;
+    fn transpose(&self) -> Self::Transpose;
+
+    fn columns(&self) -> Vec<Vec<TEntry>>;
+    fn new_columns(columns: Vec<Vec<TEntry>>) -> Self;
+
+    fn scale(&mut self, scalar: TEntry) {
+        let (rows, cols) = self.size();
+        for row in 0..rows {
+            for col in 0..cols {
+                let e = self.get_mut_entry(row, col).expect("Valid index");
+                *e = e.clone() * scalar.clone();
+            }
+        }
+    }
+
+    fn as_ref<'a>(&'a self) -> RefMatrix<'a, TEntry> {
+        let (rows, cols) = self.size();
+        let mut entries = vec![];
+        for row in 0..rows {
+            let mut v_row = vec![];
+            for col in 0..cols {
+                v_row.extend(self.get_entry(row, col));
+            }
+            entries.push(v_row);
+        }
+        RefMatrix::new(entries)
+    }
+
+    type Cast<Entry: Ring>;
+    fn cast_into<TOtherEntry: From<TEntry> + Ring>(self) -> Self::Cast<TOtherEntry>;
+
+    fn from_unsized(inner: UnsizedMatrix<TEntry>) -> Option<Self>;
+    fn to_unsized(self) -> UnsizedMatrix<TEntry>;
+
+    fn column_space(&self) -> Basis<TEntry, UnsizedMatrix<TEntry>>
+    where
+        TEntry: Field,
+    {
+        Subspace::new(
+            self.columns()
+                .into_iter()
+                .map(|c| UnsizedMatrix::new(c.clone(), (c.len(), 1)))
+                .collect(),
+        )
+        .basis()
+    }
+
+    fn rank(&self) -> usize
+    where
+        TEntry: Field,
+    {
+        self.column_space().dimension()
+    }
+
+    fn nullspace(&self) -> Basis<TEntry, UnsizedMatrix<TEntry>>
+    where
+        TEntry: Field,
+    {
+        let lhs = self.clone().to_unsized();
+        let rhs = UnsizedMatrix::new(vec![TEntry::zero(); self.size().0], (self.size().0, 1));
+        let sol = AugmentedMatrix::new(lhs, rhs)
+            .solve()
+            .unwrap()
+            .gen_parametric_form(
+                (0..self.size().0)
+                    .map(|i| VARS[i..=i].to_string())
+                    .collect(),
+                vec!["1".to_string()],
+            )
+            .unwrap()
+            .into_iter()
+            .map(|f| f.eval(&HashMap::from_iter([("1".to_string(), Function::unit())])))
+            .collect_vec();
+        let mut vars = vec![(); self.size().0]
+            .into_iter()
+            .map(|_| "".to_string())
+            .collect_vec();
+        let mut n = 0;
+        for v in sol.iter().flat_map(|s| s.variables()) {
+            if !vars.contains(&v) {
+                vars[n] = v;
+                n += 1;
+            }
+        }
+        Subspace::new(
+            vars.iter()
+                .map(|var| {
+                    UnsizedMatrix::new(
+                        sol.iter()
+                            .map(|v| {
+                                let a = v.eval(&HashMap::from_iter(vars.iter().map(|tvar| {
+                                    (
+                                        tvar.clone(),
+                                        if tvar == var {
+                                            Function::Variable(tvar.clone())
+                                        } else {
+                                            Function::Constant(TEntry::zero())
+                                        },
+                                    )
+                                })));
+                                let a_str = format!("{a:?}");
+                                if let Function::Product(box1, box2) = a {
+                                    match (*box1, *box2) {
+                                        (Function::Constant(c), Function::Variable(v))
+                                        | (Function::Variable(v), Function::Constant(c))
+                                            if v == *var =>
+                                        {
+                                            c
+                                        }
+
+                                        _ => panic!("Unrecognized form {a_str}"),
+                                    }
+                                } else if a == Function::Constant(TEntry::zero()) {
+                                    TEntry::zero()
+                                } else if a == Function::Variable(var.clone()) {
+                                    TEntry::one()
+                                } else {
+                                    panic!("Unrecognized form {a_str}");
+                                }
+                            })
+                            .collect_vec(),
+                        (self.size().0, 1),
+                    )
+                })
+                .collect_vec(),
+        )
+        .basis()
+    }
+
+    fn nullity(&self) -> usize
+    where
+        TEntry: Field,
+    {
+        self.nullspace().dimension()
+    }
+
+    fn row(&self, row: usize) -> impl Iterator<Item = &TEntry> {
+        (0..self.size().1).filter_map(move |col| self.get_entry(row, col))
+    }
+
+    fn rows(&self) -> impl Iterator<Item = impl Iterator<Item = &TEntry>> {
+        (0..self.size().0).map(|r| self.row(r))
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &TEntry> {
+        self.rows().flatten()
+    }
 }
+
+pub trait Column<TEntry: Ring>: Matrix<TEntry> {
+    fn as_vec(&self) -> Vec<TEntry> {
+        self.iter().cloned().collect_vec()
+    }
+
+    fn v_new(entries: Vec<TEntry>) -> Self {
+        let elen = entries.len();
+        Self::from_unsized(UnsizedMatrix::new(
+            entries.into_iter().collect_vec(),
+            (elen, 1),
+        ))
+        .expect("Should be the right size")
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct UnsizedMatrix<TEntry: Ring> {
+    entries: Vec<TEntry>,
+    size: (usize, usize),
+}
+
+impl<TEntry: Ring + DebugMulti> Matrix<TEntry> for UnsizedMatrix<TEntry> {
+    fn set_entry(&mut self, row: usize, col: usize, entry: TEntry) {
+        *self
+            .entries
+            .get_mut(row * self.size.1 + col)
+            .expect("Invalid matrix index") = entry;
+    }
+
+    fn get_entry(&self, row: usize, col: usize) -> Option<&TEntry> {
+        self.entries.get(row * self.size.1 + col)
+    }
+
+    fn get_mut_entry(&mut self, row: usize, col: usize) -> Option<&mut TEntry> {
+        self.entries.get_mut(row * self.size.1 + col)
+    }
+
+    fn size(&self) -> (usize, usize) {
+        self.size
+    }
+
+    type Transpose = Self;
+    fn transpose(&self) -> Self::Transpose {
+        let mut t = vec![];
+        for c in 0..self.size.1 {
+            for r in 0..self.size.0 {
+                t.push(self.get_entry(r, c).expect("valid index").clone());
+            }
+        }
+        Self::new(t, (self.size.1, self.size.0))
+    }
+
+    fn columns(&self) -> Vec<Vec<TEntry>> {
+        self.transpose()
+            .entries
+            .iter()
+            .chunks(self.size.1)
+            .into_iter()
+            .map(|col| col.cloned().collect())
+            .collect()
+    }
+    fn new_columns(columns: Vec<Vec<TEntry>>) -> Self {
+        Self::new(
+            columns.iter().flatten().cloned().collect_vec(),
+            (
+                columns.first().map(|v| v.len()).unwrap_or_default(),
+                columns.len(),
+            ),
+        )
+    }
+
+    type Cast<Entry: Ring> = UnsizedMatrix<Entry>;
+    fn cast_into<TOtherEntry: From<TEntry> + Ring>(self) -> Self::Cast<TOtherEntry> {
+        let entries = self
+            .entries
+            .into_iter()
+            .map(|v| TOtherEntry::from(v))
+            .collect();
+        UnsizedMatrix::new(entries, self.size)
+    }
+
+    fn from_unsized(inner: UnsizedMatrix<TEntry>) -> Option<Self> {
+        Some(inner)
+    }
+    fn to_unsized(self) -> UnsizedMatrix<TEntry> {
+        self
+    }
+}
+
+impl<TEntry: Ring> UnsizedMatrix<TEntry> {
+    pub fn fill_size(fill: impl Fn(usize, usize) -> TEntry, size: (usize, usize)) -> Self {
+        let mut entries = vec![];
+        for row in 0..size.0 {
+            for col in 0..size.1 {
+                entries.push(fill(row, col))
+            }
+        }
+        Self::new(entries, size)
+    }
+    pub fn new(entries: Vec<TEntry>, size: (usize, usize)) -> Self {
+        (entries.len() == size.0 * size.1)
+            .then(|| Self::new(entries, size))
+            .expect("Incorrect entries")
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct SizedMatrix<TEntry: Ring, const R: usize, const C: usize> {
+    inner: UnsizedMatrix<TEntry>,
+}
+
+impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry> for SizedMatrix<TEntry, R, C> {
+    fn set_entry(&mut self, row: usize, col: usize, entry: TEntry) {
+        self.inner.set_entry(row, col, entry);
+    }
+
+    fn get_entry(&self, row: usize, col: usize) -> Option<&TEntry> {
+        self.inner.get_entry(row, col)
+    }
+
+    fn get_mut_entry(&mut self, row: usize, col: usize) -> Option<&mut TEntry> {
+        self.inner.get_mut_entry(row, col)
+    }
+
+    fn size(&self) -> (usize, usize) {
+        (R, C)
+    }
+
+    type Transpose = SizedMatrix<TEntry, C, R>;
+    fn transpose(&self) -> Self::Transpose {
+        SizedMatrix::from_unsized(self.inner.transpose()).expect("Should be the right size")
+    }
+
+    fn columns(&self) -> Vec<Vec<TEntry>> {
+        self.inner.columns()
+    }
+    fn new_columns(columns: Vec<Vec<TEntry>>) -> Self {
+        Self::from_unsized(UnsizedMatrix::new_columns(columns)).expect("right size")
+    }
+
+    type Cast<Entry: Ring> = SizedMatrix<Entry, R, C>;
+    fn cast_into<TOtherEntry: From<TEntry> + Ring>(self) -> Self::Cast<TOtherEntry> {
+        SizedMatrix::from_unsized(self.inner.cast_into()).expect("Should be the right size")
+    }
+
+    fn from_unsized(inner: UnsizedMatrix<TEntry>) -> Option<Self> {
+        (inner.size == (R, C)).then(|| Self { inner })
+    }
+    fn to_unsized(self) -> UnsizedMatrix<TEntry> {
+        self.inner
+    }
+}
+
+impl<TEntry: Ring, const R: usize> Column<TEntry> for SizedMatrix<TEntry, R, 1> {}
+impl<TEntry: Ring> Column<TEntry> for UnsizedMatrix<TEntry> {}
 
 /// Example: ```matrix!(1,2,3;4,5,6;7,8,9)```
 #[macro_export]
 macro_rules! matrix {
     ($( $( $num:literal $(/$den:literal)? ),+ );+ ) => {
-        $crate::matrix::Matrix::new([ $( [ $( {
+        $crate::matrix::SizedMatrix::new([ $( [ $( {
             r!($num $(/$den)?)
         } ),* ] ),* ])
     };
@@ -32,7 +354,7 @@ macro_rules! matrix {
 #[macro_export]
 macro_rules! fmatrix {
     ($( $( $num:expr ),+ );+ ) => {
-        $crate::matrix::Matrix::new([ $( [ $( {
+        $crate::matrix::SizedMatrix::new([ $( [ $( {
             $crate::num::real::Real($num as f64)
         } ),* ] ),* ])
     };
@@ -41,169 +363,64 @@ macro_rules! fmatrix {
 #[macro_export]
 macro_rules! zmatrix {
     (<$n: literal> $( $( $num:literal ),+ );+) => {
-        $crate::matrix::Matrix::new([ $( [ $( {
+        $crate::matrix::SizedMatrix::new([ $( [ $( {
             ZMod::<$n>::new($num as usize)
         } ),* ] ),* ])
     };
 }
 
-impl<TEntry: Ring, const R: usize, const C: usize> Matrix<TEntry, R, C> {
-    pub const fn new(entries: [[TEntry; C]; R]) -> Self {
-        Self { entries }
+impl<TEntry: Ring, const R: usize, const C: usize> SizedMatrix<TEntry, R, C> {
+    pub fn new(entries: [[TEntry; C]; R]) -> Self {
+        Self {
+            inner: UnsizedMatrix::new(entries.into_iter().flatten().collect(), (R, C)),
+        }
     }
 
     pub fn new_columns(columns: [[TEntry; R]; C]) -> Self {
-        Matrix::new(columns).transpose()
-    }
-
-    pub fn transpose(&self) -> Matrix<TEntry, C, R> {
-        let mut t = Matrix::new(array::from_fn(|_| array::from_fn(|_| TEntry::zero())));
-        for r in 0..R {
-            for c in 0..C {
-                t.entries[c][r] = self.entries[r][c].clone();
-            }
-        }
-        t
-    }
-
-    pub fn columns(&self) -> [ColumnVector<TEntry, R>; C] {
-        self.transpose().entries.map(|col| ColumnVector::v_new(col))
-    }
-
-    pub fn scale(&mut self, scalar: TEntry) {
-        for r in 0..R {
-            for c in 0..C {
-                self.entries[r][c] = self.entries[r][c].clone() * scalar.clone();
-            }
-        }
-    }
-
-    pub fn as_unsized<'a>(&'a self) -> UnsizedMatrix<'a, TEntry> {
-        let mut entries = vec![];
-        for row in &self.entries {
-            let mut v_row = vec![];
-            for val in row {
-                v_row.push(val);
-            }
-            entries.push(v_row);
-        }
-        UnsizedMatrix::new(entries)
-    }
-
-    pub fn cast_into<TOtherEntry: From<TEntry> + Ring>(self) -> Matrix<TOtherEntry, R, C> {
-        let entries = self.entries.map(|row| row.map(|v| TOtherEntry::from(v)));
-        Matrix { entries }
-    }
-
-    pub fn column_space(&self) -> Basis<TEntry, R, ColumnVector<TEntry, R>>
-    where
-        TEntry: Field,
-    {
-        Subspace::new(self.columns()).basis()
-    }
-
-    pub fn rank(&self) -> usize
-    where
-        TEntry: Field,
-    {
-        self.column_space().dimension()
-    }
-
-    pub fn nullspace(&self) -> Basis<TEntry, C, ColumnVector<TEntry, C>>
-    where
-        TEntry: Field,
-    {
-        let sol = AugmentedMatrix::new(self.clone(), ColumnVector::vec_zero())
-            .solve()
-            .unwrap()
-            .gen_parametric_form(
-                array::from_fn(|i| VARS[i..=i].to_string()),
-                ["1".to_string()],
-            )
-            .unwrap()
-            .map(|f| f.eval(&HashMap::from_iter([("1".to_string(), Function::unit())])));
-        let mut vars = [(); R].map(|_| "".to_string());
-        let mut n = 0;
-        for v in sol.iter().flat_map(|s| s.variables()) {
-            if !vars.contains(&v) {
-                vars[n] = v;
-                n += 1;
-            }
-        }
-        Subspace::new(vars.each_ref().map(|var| {
-            ColumnVector::v_new(sol.each_ref().map(|v| {
-                let a = v.eval(&HashMap::from_iter(vars.each_ref().map(|tvar| {
-                    (
-                        tvar.clone(),
-                        if tvar == var {
-                            Function::Variable(tvar.clone())
-                        } else {
-                            Function::Constant(TEntry::zero())
-                        },
-                    )
-                })));
-                let a_str = format!("{a:?}");
-                if let Function::Product(box1, box2) = a {
-                    match (*box1, *box2) {
-                        (Function::Constant(c), Function::Variable(v))
-                        | (Function::Variable(v), Function::Constant(c))
-                            if v == *var =>
-                        {
-                            c
-                        }
-
-                        _ => panic!("Unrecognized form {a_str}"),
-                    }
-                } else if a == Function::Constant(TEntry::zero()) {
-                    TEntry::zero()
-                } else if a == Function::Variable(var.clone()) {
-                    TEntry::one()
-                } else {
-                    panic!("Unrecognized form {a_str}");
-                }
-            }))
-        }))
-        .basis()
-    }
-
-    pub fn nullity(&self) -> usize
-    where
-        TEntry: Field,
-    {
-        self.nullspace().dimension()
+        SizedMatrix::new(columns).transpose()
     }
 }
 
-impl<TEntry: Ring, const R: usize, const C: usize> std::fmt::Debug for Matrix<TEntry, R, C> {
+impl<TEntry: Ring, const R: usize, const C: usize> std::fmt::Debug for SizedMatrix<TEntry, R, C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.as_unsized().fmt(f)
+        self.as_ref().fmt(f)
     }
 }
 
-pub type ColumnVector<TEntry, const N: usize> = Matrix<TEntry, N, 1>;
+impl<TEntry: Ring> std::fmt::Debug for UnsizedMatrix<TEntry> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_ref().fmt(f)
+    }
+}
+
+pub type ColumnVector<TEntry, const N: usize> = SizedMatrix<TEntry, N, 1>;
 impl<TEntry: Ring, const N: usize> ColumnVector<TEntry, N> {
-    pub fn v_new(entries: [TEntry; N]) -> Self {
-        Self {
-            entries: entries.map(|r| [r]),
-        }
-    }
-
     pub fn as_array(&self) -> [TEntry; N] {
-        self.entries.each_ref().map(|r| r[0].clone())
+        self.inner
+            .entries
+            .iter()
+            .cloned()
+            .array_chunks()
+            .next()
+            .unwrap()
     }
 }
 
-pub type SquareMatrix<TEntry, const N: usize> = Matrix<TEntry, N, N>;
+pub type SquareMatrix<TEntry, const N: usize> = SizedMatrix<TEntry, N, N>;
 impl<TEntry: Ring, const N: usize> SquareMatrix<TEntry, N> {
     #[allow(unused)]
     pub fn determinant(&self) -> TEntry {
-        self.as_unsized().determinant()
+        self.as_ref().determinant()
     }
 
     pub fn ident() -> Self {
-        let mut me = Self::new(array::from_fn(|_| array::from_fn(|_| TEntry::zero())));
-        for (r, row) in me.entries.iter_mut().enumerate() {
-            row[r] = TEntry::one()
+        let mut me = Self::from_unsized(UnsizedMatrix {
+            entries: vec![TEntry::zero(); N * N],
+            size: (N, N),
+        })
+        .expect("Should be the right size");
+        for r in 0..N {
+            me.set_entry(r, r, TEntry::one());
         }
         me
     }
@@ -219,7 +436,7 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
                     unreachable!("Determinant was invertible but matrix reduces to non-identity")
                 }
             } else {
-                let unsizedmat = self.as_unsized();
+                let unsizedmat = self.as_ref();
                 let c: SquareMatrix<TEntry, N> = SquareMatrix::new(array::from_fn(|r| {
                     array::from_fn(|c| unsizedmat.cofactor(c, r)) // transpose
                 }));
@@ -253,11 +470,11 @@ impl<TEntry: Ring, const N: usize> Ring for SquareMatrix<TEntry, N> {
 
 // TODO: Should square matrices be an exponential ring? The square matrix exponential operation is defined but in its canonical form it's an infinite series.
 
-pub struct UnsizedMatrix<'a, TEntry> {
+pub struct RefMatrix<'a, TEntry> {
     size: (usize, usize),
     entries: Vec<Vec<&'a TEntry>>,
 }
-impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
+impl<'a, TEntry: Ring> RefMatrix<'a, TEntry> {
     pub fn new(entries: Vec<Vec<&'a TEntry>>) -> Self {
         let empty = vec![];
         let size = (entries.len(), entries.first().unwrap_or(&empty).len());
@@ -311,11 +528,11 @@ impl<'a, TEntry: Ring> UnsizedMatrix<'a, TEntry> {
             }
             entries.push(m_row);
         }
-        UnsizedMatrix::new(entries).determinant() * sign
+        RefMatrix::new(entries).determinant() * sign
     }
 }
 
-impl<TEntry: Ring> std::fmt::Debug for UnsizedMatrix<'_, TEntry> {
+impl<TEntry: Ring> std::fmt::Debug for RefMatrix<'_, TEntry> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let res: Vec<Vec<Vec<String>>> = self
             .entries
@@ -366,11 +583,9 @@ impl<TEntry: Ring> std::fmt::Debug for UnsizedMatrix<'_, TEntry> {
 
 try_ops_trait!(trait MatVecOp {
     fn vec_op(&self, op: Op, rhs: &dyn Value) -> Result<Box<dyn Value>, Box<dyn Error>> {
-        if ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = Matrix<TEntry, R, C>, [(); R * C]:, If<{ C != 1 }>: True) {
-            |lhs, op, rhs| try_vector_ops(lhs, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
-        } else if ([TEntry: Ring + Value, const N: usize]: Self = ColumnVector<TEntry, N>,) {
-            |lhs, op, rhs| try_vector_ops(lhs, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
-        } else ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = Matrix<TEntry, R, C>,) {
+        if ([TEntry: Ring + Value]: Self = UnsizedMatrix<TEntry>,) {
+            |lhs, op, rhs| try_vector_ops::<TEntry, _>(lhs, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
+        } else ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = SizedMatrix<TEntry, R, C>,) {
             |_,_,_|Err("Invalid matrix operation".into())
         }
     }
@@ -381,17 +596,18 @@ try_ops_trait!(trait MatRingOp {
         op: Op,
         rhs: &dyn Value,
     ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        if ([TEntry: Ring + Value, const N: usize]: Self = SquareMatrix<TEntry, N>,) {
+        if ([TEntry: Ring + Value]: Self = UnsizedMatrix<TEntry>,) {
             |lhs: &Self, op, rhs|lhs.try_ring_ops(rhs, op).ok_or_else(|| "Invalid matrix operation".into())
-        } else ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = Matrix<TEntry, R, C>,) {
+        } else ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = SizedMatrix<TEntry, R, C>,) {
             |_,_,_|Err("Invalid matrix operation".into())
         }
     }
 });
 
-impl<TEntry: Ring + Value, const R: usize, const C: usize> Value for Matrix<TEntry, R, C> {
+impl<TEntry: Ring + Value> Value for UnsizedMatrix<TEntry> {
     fn get_type(&self) -> ValueType {
-        ValueType::Matrix(R, C)
+        let size = self.size();
+        ValueType::Matrix(Box::new(TEntry::zero().get_type()), size.0, size.1)
     }
 
     fn try_op(
@@ -399,6 +615,12 @@ impl<TEntry: Ring + Value, const R: usize, const C: usize> Value for Matrix<TEnt
         op: Op,
         rhs: Box<dyn Value>,
     ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        self.vec_op(op, &*rhs).or_else(|_| self.ring_op(op, &*rhs))
+        let entry_t = TEntry::zero().get_type();
+        if let ValueType::Matrix(rty, _, _) = rhs.get_type()
+            && *rty == entry_t
+        {
+            return self.ring_op(op, &*rhs);
+        }
+        self.ring_op(op, &*rhs).or_else(|_| self.vec_op(op, &*rhs))
     }
 }

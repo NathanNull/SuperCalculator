@@ -6,7 +6,7 @@ use std::{
 use super::{rational::Rational, real::Real};
 use crate::{
     expression::{function::Function, polynomial::UnsizedPolynomial},
-    matrix::UnsizedMatrix,
+    matrix::RefMatrix,
     r,
     ring_field::{Ring, Sqrt, TrueDiv},
 };
@@ -102,7 +102,7 @@ fn resultant(
         rows.push(row)
     }
 
-    let sylvester_matrix = UnsizedMatrix::new(rows);
+    let sylvester_matrix = RefMatrix::new(rows);
     let mut det = sylvester_matrix.determinant();
     let mut new_approx = approx;
     let f_det = det.convert(|r| Real(r.as_f64()));

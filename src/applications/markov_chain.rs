@@ -1,5 +1,5 @@
 use crate::{
-    matrix::{ColumnVector, SquareMatrix},
+    matrix::{ColumnVector, Matrix, SizedMatrix, SquareMatrix},
     num::rational::Rational,
     ring_field::{Ring, TrueDiv},
 };
@@ -25,18 +25,17 @@ impl<const STATES: usize> SimpleMarkovChain<STATES> {
         &self,
         current_state: ColumnVector<Rational, STATES>,
     ) -> ColumnVector<Rational, STATES> {
-        self.transition_matrix * current_state
+        self.transition_matrix.clone() * current_state
     }
 
     pub fn steady_state(&self) -> Option<ColumnVector<Rational, STATES>> {
-        let eigenmatrix = self.transition_matrix - SquareMatrix::ident();
+        let eigenmatrix = self.transition_matrix.clone() - SquareMatrix::ident();
         println!("{:?}", eigenmatrix);
         if let Some(scaled_state) = eigenmatrix.nullspace().vectors().first() {
             let sum = scaled_state
-                .entries
-                .iter()
-                .fold(Rational::zero(), |acc, r| acc + r[0]);
-            Some(*scaled_state * sum.inverse())
+                .rows()
+                .fold(Rational::zero(), |acc, mut r| acc + *r.next().unwrap());
+            SizedMatrix::from_unsized(scaled_state.clone() * sum.inverse())
         } else {
             None
         }

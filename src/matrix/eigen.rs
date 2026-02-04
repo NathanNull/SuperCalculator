@@ -27,7 +27,7 @@ where
         Ok(eigenvals)
     }
 
-    pub fn eigenspace(&self, eigenvalue: TEntry) -> Basis<TEntry, N, ColumnVector<TEntry, N>> {
+    pub fn eigenspace(&self, eigenvalue: TEntry) -> Basis<TEntry, UnsizedMatrix<TEntry>> {
         let test_matrix = self.clone() - SquareMatrix::ident() * eigenvalue;
         test_matrix.nullspace()
     }
@@ -36,10 +36,11 @@ where
         &self,
         eigenvalue: TEntry,
         rank: usize,
-    ) -> Basis<TEntry, N, ColumnVector<TEntry, N>> {
+    ) -> Basis<TEntry, UnsizedMatrix<TEntry>> {
         let mut test_matrix = self.clone() - SquareMatrix::ident() * eigenvalue;
         let original = test_matrix.clone();
         for _ in 1..rank {
+            // TODO: fastexp
             test_matrix = test_matrix * original.clone();
         }
         test_matrix.nullspace()
@@ -48,7 +49,7 @@ where
     pub fn try_diagonalize(&self) -> Option<(Self, Self)> {
         if let Ok(eigenvalues) = self.eigenvalues() {
             let mut vals: [TEntry; N] = array::from_fn(|_| TEntry::from(0));
-            let mut vecs = vals.each_ref().map(|_| ColumnVector::vec_zero());
+            let mut vecs = vals.each_ref().map(|_| ColumnVector::vec_zero(N));
             let mut num_found = 0;
             for (eigenvalue, mult) in eigenvalues {
                 let eigenspace = self.eigenspace(eigenvalue.clone());
@@ -57,7 +58,7 @@ where
                     return None;
                 }
                 for vec in eigenspace.vectors() {
-                    vecs[num_found] = vec.clone();
+                    vecs[num_found] = SizedMatrix::from_unsized(vec.clone()).expect("should work");
                     vals[num_found] = eigenvalue.clone();
                     num_found += 1;
                 }
@@ -68,10 +69,10 @@ where
                 // diagonalization possible.
                 return None;
             }
-            let p = Matrix::new_columns(vecs.map(|v| v.as_array()));
-            let mut d = SquareMatrix::ident();
+            let p = Self::new_columns(vecs.map(|v| v.as_array()));
+            let mut d: SizedMatrix<TEntry, N, N> = SquareMatrix::ident();
             for (idx, val) in vals.iter().enumerate() {
-                d.entries[idx][idx] = val.clone();
+                *d.get_mut_entry(idx, idx).unwrap() = val.clone();
             }
             Some((p, d))
         } else {

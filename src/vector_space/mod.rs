@@ -1,12 +1,12 @@
 use std::{
-    array,
-    ops::{Add, Mul, Sub},
+    array, ops::{Add, Mul, Sub}
 };
+
+use itertools::Itertools;
 
 use crate::{
     debug_multi::DebugMulti,
-    if_trait::{If, True},
-    matrix::{ColumnVector, Matrix},
+    matrix::{Column, Matrix, SizedMatrix, UnsizedMatrix},
     repl::{Downcast, Op, Value},
     ring_field::{Convenient, Field, QuadraticClosure, Ring},
 };
@@ -14,18 +14,18 @@ use crate::{
 pub mod subspace;
 
 #[allow(unused)]
-pub trait Vector<TEntry: Ring, const DIMENSION: usize>:
-    Add<Output = Self> + Sub<Output = Self> + Mul<TEntry, Output = Self> + Convenient + DebugMulti
+pub trait Vector<TEntry: Ring>:
+    Add<Output = Self> + Sub<Output = Self> + Mul<TEntry, Output = Self> + Convenient
 {
-    fn to_column(&self) -> ColumnVector<TEntry, DIMENSION>;
-    fn from_column(column: &ColumnVector<TEntry, DIMENSION>) -> Self;
-    fn vec_zero() -> Self;
+    fn to_vec(&self) -> Vec<TEntry>;
+    fn from_vec(vec: Vec<TEntry>) -> Self;
+    fn vec_zero(s: usize) -> Self;
     fn dot(&self, other: &Self) -> TEntry {
-        let col_self = self.to_column();
-        let col_other = other.to_column();
+        let col_self = self.to_vec();
+        let col_other = other.to_vec();
         let mut res = TEntry::zero();
-        for ([s], [o]) in col_self.entries.into_iter().zip(col_other.entries) {
-            res = res + (s * o);
+        for (s, o) in col_self.iter().zip(col_other.iter()) {
+            res = res + (s.clone() * o.clone());
         }
         res
     }
@@ -50,6 +50,7 @@ pub trait Vector<TEntry: Ring, const DIMENSION: usize>:
     {
         other.clone() * (self.dot(other) / other.dot(other))
     }
+    fn dimension(&self) -> usize;
 }
 
 pub trait Cross<TEntry> {
@@ -58,78 +59,84 @@ pub trait Cross<TEntry> {
         Self: Sized;
 }
 
-impl<TEntry: Ring, T: Vector<TEntry, 3>> Cross<TEntry> for T {
+fn cross_arr<TEntry: Ring>([[u1, u2, u3], [v1, v2, v3]]: [[&TEntry; 3]; 2]) -> [TEntry; 3] {
+    [
+        u2.clone() * v3.clone() - u3.clone() * v2.clone(),
+        u3.clone() * v1.clone() - u1.clone() * v3.clone(),
+        u1.clone() * v2.clone() - u2.clone() * v1.clone(),
+    ]
+}
+
+trait Dim3<TEntry: Ring>: Vector<TEntry> {}
+impl<TEntry: Ring> Dim3<TEntry> for UnsizedMatrix<TEntry> {}
+impl<TEntry: Ring> Dim3<TEntry> for SizedMatrix<TEntry, 3, 1> {}
+
+impl<TEntry: Ring, T: Dim3<TEntry>> Cross<TEntry> for T {
     fn cross(&self, other: &Self) -> Self
     where
         Self: Sized,
     {
-        let [u1, u2, u3] = self.to_column().as_array();
-        let [v1, v2, v3] = other.to_column().as_array();
-        let res = [
-            u2.clone() * v3.clone() - u3.clone() * v2.clone(),
-            u3.clone() * v1.clone() - u1.clone() * v3.clone(),
-            u1.clone() * v2.clone() - u2.clone() * v1.clone(),
-        ];
-        Self::from_column(&ColumnVector::v_new(res))
-    }
-}
-
-impl<TEntry: Ring, const N: usize> Vector<TEntry, N> for ColumnVector<TEntry, N> {
-    fn to_column(&self) -> ColumnVector<TEntry, N> {
-        self.clone()
-    }
-    fn vec_zero() -> Self {
-        Self::v_new(array::from_fn(|_| TEntry::zero()))
-    }
-
-    fn from_column(column: &ColumnVector<TEntry, N>) -> Self {
-        column.clone()
-    }
-}
-
-impl<TEntry: Ring, const R: usize, const C: usize> Vector<TEntry, { R * C }>
-    for Matrix<TEntry, R, C>
-where
-    [(); R * C]:,
-    If<{ C != 1 }>: True,
-{
-    fn to_column(&self) -> ColumnVector<TEntry, { R * C }> {
-        let mut entries = array::from_fn(|_| TEntry::zero());
-        for r in 0..R {
-            for c in 0..C {
-                entries[r * C + c] = self.entries[r][c].clone();
-            }
+        if self.dimension() != 3 {
+            panic!("Wrong dimension")
         }
-        ColumnVector::v_new(entries)
-    }
-    fn vec_zero() -> Self {
-        Self::new(array::from_fn(|_| {
-            array::from_fn(|_| TEntry::zero())
-        }))
-    }
-
-    fn from_column(column: &ColumnVector<TEntry, { R * C }>) -> Self {
-        let mut entries = array::from_fn(|_| array::from_fn(|_| TEntry::zero()));
-        for (r, row) in entries.iter_mut().enumerate() {
-            for (c, entry) in row.iter_mut().enumerate() {
-                *entry = column.entries[r * C + c][0].clone();
-            }
+        if let [u1, u2, u3] = self.to_vec().as_slice()
+            && let [v1, v2, v3] = other.to_vec().as_slice()
+        {
+            Self::from_vec(cross_arr([[u1, u2, u3], [v1, v2, v3]]).to_vec())
+        } else {
+            unreachable!("yo what")
         }
-        Self::new(entries)
     }
 }
 
-trait CrossVal<TEntry: Ring + Value, const D: usize> {
+impl<TEntry: Ring> Vector<TEntry> for UnsizedMatrix<TEntry> {
+    fn vec_zero(s: usize) -> Self {
+        Self::v_new((0..s).map(|_| TEntry::zero()).collect_vec())
+    }
+
+    fn from_vec(vec: Vec<TEntry>) -> Self {
+        Self::v_new(vec)
+    }
+
+    fn dimension(&self) -> usize {
+        self.size().0 * self.size().1
+    }
+    
+    fn to_vec(&self) -> Vec<TEntry> {
+        self.as_vec()
+    }
+}
+
+impl<TEntry: Ring, const R: usize, const C: usize> Vector<TEntry> for SizedMatrix<TEntry, R, C> {
+    fn vec_zero(s: usize) -> Self {
+        assert_eq!(R*C, s);
+        Self::new(array::from_fn(|_|array::from_fn(|_|TEntry::zero())))
+    }
+
+    fn from_vec(vec: Vec<TEntry>) -> Self {
+        Self::from_unsized(UnsizedMatrix::new(vec, (R,C))).unwrap()
+    }
+
+    fn dimension(&self) -> usize {
+        R*C
+    }
+    
+    fn to_vec(&self) -> Vec<TEntry> {
+        self.rows().flatten().cloned().collect()
+    }
+}
+
+trait CrossVal<TEntry: Ring + Value> {
     fn try_cross(&self, rhs: &dyn Value, op: Op) -> Option<Box<dyn Value>>;
 }
 
-impl<TEntry: Ring + Value, const D: usize, T: Value + Vector<TEntry, D>> CrossVal<TEntry, D> for T {
+impl<TEntry: Ring + Value, T: Value + Vector<TEntry>> CrossVal<TEntry> for T {
     default fn try_cross(&self, _rhs: &dyn Value, _op: Op) -> Option<Box<dyn Value>> {
         None
     }
 }
 
-impl<TEntry: Ring + Value, T: Vector<TEntry, 3> + Value> CrossVal<TEntry, 3> for T {
+impl<TEntry: Ring + Value, T: Vector<TEntry> + Value + Cross<TEntry>> CrossVal<TEntry> for T {
     fn try_cross(&self, rhs: &dyn Value, op: Op) -> Option<Box<dyn Value>> {
         if op == Op::Cross && rhs.get_type() == self.get_type() {
             let rhs = rhs.downcast::<T>().expect("Downcast error");
@@ -140,7 +147,7 @@ impl<TEntry: Ring + Value, T: Vector<TEntry, 3> + Value> CrossVal<TEntry, 3> for
     }
 }
 
-pub fn try_vector_ops<TEntry: Ring + Value, const DIM: usize, T: Vector<TEntry, DIM> + Value>(
+pub fn try_vector_ops<TEntry: Ring + Value, T: Vector<TEntry> + Value>(
     lhs: &T,
     rhs: &dyn Value,
     op: Op,

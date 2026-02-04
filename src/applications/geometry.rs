@@ -1,5 +1,5 @@
 use crate::{
-    matrix::{ColumnVector, Matrix},
+    matrix::{Column, ColumnVector, SizedMatrix},
     num::rational::Rational,
     r,
 };
@@ -10,7 +10,9 @@ pub fn polygon_area(vecs: Vec<ColumnVector<Rational, 2>>) -> Rational {
     let mut area = r!(0);
     for i in 0..vecs.len() {
         let j = (i + 1) % vecs.len();
-        let m = Matrix::new_columns([vecs[i], vecs[j]].map(|v| v.as_array()));
+        let m = SizedMatrix::<_, 2, 2>::new_columns(
+            [&vecs[i], &vecs[j]].map(|v| *v.as_vec().as_array().unwrap()),
+        );
         area = area + m.determinant() / r!(2);
     }
     area

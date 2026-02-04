@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::{matrix::SquareMatrix, num::real::Real};
+use crate::{matrix::SquareMatrix, num::real::Real, vector_space::Vector};
 
 pub fn rank<const PLAYERS: usize>(player_results: [[usize; PLAYERS]; PLAYERS]) -> [usize; PLAYERS]
 where
@@ -12,7 +12,7 @@ where
     let eigenval = score_matrix.eigenvalues().unwrap().first().unwrap().0;
     let espace = score_matrix.eigenspace(eigenval);
     let eigenvec = espace.vectors().first().unwrap();
-    let order = eigenvec.as_array().map(|v| v.0);
+    let order = eigenvec.to_vec().into_iter().map(|v| v.0).collect_vec();
     // Enumerate, sort by score, then convert into an array and return
     order
         .iter()

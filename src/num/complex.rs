@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{
-    matrix::ColumnVector,
     num::real::Real,
     repl::{Value, ValueType},
     ring_field::{ExponentialRing, Field, FieldOps, Ring, TrueDiv},
@@ -134,20 +133,24 @@ impl TrueDiv for Complex {
 
 impl Field for Complex {}
 
-impl Vector<Real, 2> for Complex {
-    fn to_column(&self) -> crate::matrix::ColumnVector<Real, 2> {
-        ColumnVector::v_new([self.real, self.imag])
+impl Vector<Real> for Complex {
+    fn to_vec(&self) -> Vec<Real> {
+        vec![self.real, self.imag]
     }
 
-    fn from_column(column: &crate::matrix::ColumnVector<Real, 2>) -> Self {
+    fn from_vec(column: Vec<Real>) -> Self {
         Self {
-            real: column.entries[0][0],
-            imag: column.entries[1][0],
+            real: column[0],
+            imag: column[1],
         }
     }
 
-    fn vec_zero() -> Self {
+    fn vec_zero(_: usize) -> Self {
         Ring::zero()
+    }
+
+    fn dimension(&self) -> usize {
+        2
     }
 }
 

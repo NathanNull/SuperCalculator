@@ -3,7 +3,7 @@ use std::array;
 use crate::{
     augmented_matrix::AugmentedMatrix,
     expression::polynomial::Polynomial,
-    matrix::{ColumnVector, Matrix},
+    matrix::{Column, ColumnVector, Matrix, SizedMatrix},
     num::rational::Rational,
     r,
 };
@@ -18,11 +18,11 @@ macro_rules! data {
 pub fn line_of_best_fit<const DATA: usize>(
     data: [(Rational, Rational); DATA],
 ) -> Polynomial<Rational, 2> {
-    let a: Matrix<Rational, DATA, 2> = Matrix::new(array::from_fn(|i| [r!(1), data[i].0]));
+    let a: SizedMatrix<Rational, DATA, 2> = SizedMatrix::new(array::from_fn(|i| [r!(1), data[i].0]));
     let a_t = a.transpose();
-    let b = ColumnVector::v_new(data.each_ref().map(|point| point.1));
+    let b = ColumnVector::v_new(data.each_ref().map(|point| point.1).to_vec());
 
-    let lhs = a_t * a;
+    let lhs = a_t.clone() * a;
     let rhs = a_t * b;
     let soln = AugmentedMatrix::new(lhs, rhs)
         .solve()

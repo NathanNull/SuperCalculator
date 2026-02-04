@@ -1,6 +1,6 @@
 use crate::{
     augmented_matrix::AugmentedMatrix,
-    matrix::{ColumnVector, SquareMatrix},
+    matrix::{Column, ColumnVector, Matrix, SquareMatrix},
     num::cyclic_group::ZMod,
 };
 
@@ -43,7 +43,7 @@ where
             }
         }
         Self {
-            state: ColumnVector::v_new(config_arr),
+            state: ColumnVector::v_new(config_arr.to_vec()),
             connections: SquareMatrix::new(connect_arr),
         }
     }
@@ -54,13 +54,14 @@ where
 
     pub fn make_move(&mut self, row: usize, col: usize) {
         let ind = row * C + col;
-        let conns = self.connections.entries[ind];
-        for (i, conn) in conns.iter().enumerate() {
-            self.state.entries[i][0] = self.state.entries[i][0] + *conn;
+        let conns = self.connections.row(ind);
+        for (i, conn) in conns.enumerate() {
+            let e = self.state.get_mut_entry(i,0).unwrap();
+            *e = *e + *conn;
         }
     }
 
-    pub fn solve(&self) -> Vec<(usize, usize)> {
+    pub fn solve(self) -> Vec<(usize, usize)> {
         let aug = AugmentedMatrix::new(self.connections, self.state);
         let soln = aug
             .solve()
@@ -69,7 +70,7 @@ where
         let mut vec_soln = vec![];
         for r in 0..R {
             for c in 0..C {
-                if soln.entries[r * C + c][0] == ZMod::new(1) {
+                if soln.get_entry(r * C + c, 0) == Some(&ZMod::new(1)) {
                     vec_soln.push((r, c));
                 }
             }

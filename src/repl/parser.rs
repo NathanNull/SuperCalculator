@@ -1,8 +1,8 @@
-use std::{array, sync::LazyLock};
+use std::sync::LazyLock;
 
 use super::{value::ValueClone, *};
 use crate::{
-    matrix::Matrix,
+    matrix::UnsizedMatrix,
     num::{complex::Complex, rational::Rational, real::Real},
 };
 use parce::parser;
@@ -20,13 +20,15 @@ static P_VAL: LockedParser<(Box<dyn Value>,)> = LazyLock::new(|| {
     let p_integer = p_n::<i32>();
     let p_rational = parser!(('-'?) & (p_n::<u64>()) & (!'/') & (p_n::<u64>()))
         .map(|(neg, num, den)| Rational::new(neg.is_none(), num, den));
-    let p_real = parser!(('-'?) & (p_n::<u64>()) & (!'.') & (p_n::<u64>())).map(|(sign, int, dec)| {
-        Real(
-            (int as f64
-                + str::parse::<f64>(&("0.".to_string() + &dec.to_string()))
-                    .expect("Valid float literal")) * if sign.is_some() {-1.} else {1.},
-        )
-    });
+    let p_real =
+        parser!(('-'?) & (p_n::<u64>()) & (!'.') & (p_n::<u64>())).map(|(sign, int, dec)| {
+            Real(
+                (int as f64
+                    + str::parse::<f64>(&("0.".to_string() + &dec.to_string()))
+                        .expect("Valid float literal"))
+                    * if sign.is_some() { -1. } else { 1. },
+            )
+        });
 
     let p_r = parser!(
         (p_real.box_clone())
@@ -106,13 +108,13 @@ static P_VAL: LockedParser<(Box<dyn Value>,)> = LazyLock::new(|| {
                 if rows == R && cols == C {
                     return match entry {
                         Some(ValueType::Integer) | None => {
-                            Some(Matrix::<i32, R, C>::new(array::from_fn(|r|array::from_fn(|c|*vals[r][c].downcast::<i32>().unwrap()))).box_clone())
+                            Some(UnsizedMatrix::<i32>::fill_size(|r,c|*vals[r][c].downcast::<i32>().unwrap(), (R,C)).box_clone())
                         }
                         Some(ValueType::Real) => {
-                            Some(Matrix::<Real, R, C>::new(array::from_fn(|r|array::from_fn(|c|*vals[r][c].downcast::<Real>().unwrap()))).box_clone())
+                            Some(UnsizedMatrix::<Real>::fill_size(|r,c|*vals[r][c].downcast::<Real>().unwrap(), (R,C)).box_clone())
                         }
                         Some(ValueType::Rational) => {
-                            Some(Matrix::<Rational, R, C>::new(array::from_fn(|r|array::from_fn(|c|*vals[r][c].downcast::<Rational>().unwrap()))).box_clone())
+                            Some(UnsizedMatrix::<Rational>::fill_size(|r,c|*vals[r][c].downcast::<Rational>().unwrap(), (R,C)).box_clone())
                         }
                         _ => {
                             None

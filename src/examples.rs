@@ -1,6 +1,6 @@
 use crate::expression::polynomial::Polynomial;
 use crate::matrix;
-use crate::matrix::{ColumnVector, SquareMatrix};
+use crate::matrix::{Column, ColumnVector, Matrix, SizedMatrix, SquareMatrix};
 use crate::num::{cyclic_group::ZMod, rational::Rational};
 use crate::ring_field::Ring;
 use crate::vector_space::Vector;
@@ -62,7 +62,7 @@ impl Examples {
                 ]);
                 println!(
                     "{:?}: State after state 1",
-                    chain.step_probabilities(ColumnVector::v_new([r!(1), r!(0), r!(0)]))
+                    chain.step_probabilities(ColumnVector::v_new(vec![r!(1), r!(0), r!(0)]))
                 );
                 println!(
                     "{} is the steady state",
@@ -77,11 +77,15 @@ impl Examples {
                 let f: Polynomial<Rational, 3> = Polynomial::new(vec![(r!(3), 2), (r!(1), 1)]);
                 println!(
                     "{:?}",
-                    Polynomial::from_column(&(Calculus::DERIVATIVE * f.to_column()))
+                    Polynomial::<_,3>::from_vec(
+                        (Calculus::<3>::get_derivative() * ColumnVector::v_new(f.to_vec())).as_vec()
+                    )
                 );
                 println!(
                     "{:?}",
-                    Polynomial::from_column(&(Calculus::INTEGRAL * f.to_column()))
+                    Polynomial::<_,3>::from_vec(
+                        (Calculus::<3>::get_integral() * ColumnVector::v_new(f.to_vec())).as_vec()
+                    )
                 );
             }
             Self::LightsOut => {
@@ -105,7 +109,7 @@ impl Examples {
                     println!("{:?} is P", p);
                     println!("{:?} is D", d);
                     println!("{:?} is P^-1", p.try_inverse().unwrap());
-                    println!("{:?} should equal m", p * d * p.try_inverse().unwrap())
+                    println!("{:?} should equal m", p.clone() * d * p.try_inverse().unwrap())
                 }
                 println!("{:?}: eigenspace from value 3", m.eigenspace(r!(3)));
                 println!(
@@ -117,7 +121,7 @@ impl Examples {
                 // Must list points in ccw order, otherwise the area will be negative
                 let polygon = data!((1, 1), (-1, 1), (-1, -1), (1, -1))
                     .into_iter()
-                    .map(|p| ColumnVector::v_new([p.0, p.1]))
+                    .map(|p| ColumnVector::v_new(vec![p.0, p.1]))
                     .collect::<Vec<_>>();
                 println!("Polygon's area is {:?}", polygon_area(polygon));
             }
@@ -128,9 +132,14 @@ impl Examples {
             Self::Subspace => {
                 let m = matrix!(1,0,0;0,1,0;0,0,0);
                 let s = m.column_space();
-                println!("Col(m) contains (1,0,1): {}", s.contains(matrix!(1;0;1)));
-                let s2: Subspace<Rational, 2, matrix::Matrix<Rational, 2, 1>, 3> = Subspace::new(
-                    data!((1, 1), (1, 0), (0, 1)).map(|p| ColumnVector::v_new([p.0, p.1])),
+                println!(
+                    "Col(m) contains (1,0,1): {}",
+                    s.contains(matrix!(1;0;1).to_unsized())
+                );
+                let s2: Subspace<Rational, SizedMatrix<Rational, 2, 1>> = Subspace::new(
+                    data!((1, 1), (1, 0), (0, 1))
+                        .map(|p| ColumnVector::v_new(vec![p.0, p.1]))
+                        .to_vec(),
                 );
                 println!(
                     "Subspace is linearly independant? {}",

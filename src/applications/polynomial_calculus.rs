@@ -1,4 +1,4 @@
-use crate::{matrix::Matrix, num::rational::Rational, r};
+use crate::{matrix::SizedMatrix, num::rational::Rational, r};
 
 /// Void type, basically static, exists to contain generic consts
 pub enum Calculus<const DEGREE: usize> {}
@@ -8,7 +8,7 @@ where
     [(); DEGREE - 1]:,
     [(); DEGREE + 1]:,
 {
-    const fn get_derivative() -> Matrix<Rational, { DEGREE - 1 }, DEGREE> {
+    const DER_ENTRIES: [[Rational; DEGREE]; DEGREE - 1] = {
         let mut entries = [[r!(0); DEGREE]; DEGREE - 1];
         let mut i = 0;
         while i < DEGREE - 1 {
@@ -16,11 +16,13 @@ where
             entries[i][i + 1] = Rational::new(true, (i + 1) as u64, 1);
             i += 1;
         }
-        Matrix::new(entries)
+        entries
+    };
+    pub fn get_derivative() -> SizedMatrix<Rational, { DEGREE - 1 }, DEGREE> {
+        SizedMatrix::new(Self::DER_ENTRIES)
     }
-    pub const DERIVATIVE: Matrix<Rational, { DEGREE - 1 }, DEGREE> = Self::get_derivative();
 
-    const fn get_integral() -> Matrix<Rational, { DEGREE + 1 }, DEGREE> {
+    const INT_ENTRIES: [[Rational; DEGREE]; DEGREE + 1] = {
         let mut entries = [[r!(0); DEGREE]; DEGREE + 1];
         let mut i = 1;
         while i < DEGREE + 1 {
@@ -28,7 +30,9 @@ where
             entries[i][i - 1] = Rational::new(true, 1, i as u64);
             i += 1;
         }
-        Matrix::new(entries)
+        entries
+    };
+    pub fn get_integral() -> SizedMatrix<Rational, { DEGREE + 1 }, DEGREE> {
+        SizedMatrix::new(Self::INT_ENTRIES)
     }
-    pub const INTEGRAL: Matrix<Rational, { DEGREE + 1 }, DEGREE> = Self::get_integral();
 }

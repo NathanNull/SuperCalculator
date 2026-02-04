@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 
-use crate::matrix::{ColumnVector, Matrix, SquareMatrix};
+use crate::matrix::{Column, ColumnVector, Matrix, SizedMatrix, SquareMatrix};
 use crate::num::cyclic_group::ZMod;
 use crate::ring_field::Ring as _;
 
@@ -26,8 +26,8 @@ pub fn try_break_code<const BLOCK_SIZE: usize>(
     let plain = to_nums(plaintext);
 
     for vals in (0..cipher.len()).combinations(BLOCK_SIZE) {
-        let cmat = Matrix::new_columns(array::from_fn(|i| cipher[vals[i]]));
-        let pmat = Matrix::new_columns(array::from_fn(|i| plain[vals[i]]));
+        let cmat = SizedMatrix::new_columns(array::from_fn(|i| cipher[vals[i]]));
+        let pmat = SizedMatrix::new_columns(array::from_fn(|i| plain[vals[i]]));
         // EM=C -> E=CM^-1
         if let Some(pinv) = pmat.try_inverse() {
             let enc_trial = cmat * pinv;
@@ -50,11 +50,11 @@ pub fn decode<const BLOCK_SIZE: usize>(
 ) -> Option<String> {
     if let Some(decrypt) = encryption_matrix.try_inverse() {
         let mut chars = vec![];
-        for c in to_nums(ciphertext) {
-            let c_col = ColumnVector::v_new(c);
-            let plaintext_col = decrypt * c_col;
-            for [e] in plaintext_col.entries {
-                let pos = e.into();
+        for c in to_nums::<BLOCK_SIZE>(ciphertext) {
+            let c_col = ColumnVector::v_new(c.to_vec());
+            let plaintext_col = decrypt.clone() * c_col;
+            for e in plaintext_col.rows().map(|mut r|r.next().expect("nonempty row")) {
+                let pos = (*e).into();
                 chars.push(&ALPHABET[pos..=pos]);
             }
         }
@@ -73,11 +73,11 @@ pub fn encode<const BLOCK_SIZE: usize>(
     encryption_matrix: SquareMatrix<ZMod<26>, BLOCK_SIZE>,
 ) -> String {
     let mut chars = vec![];
-    for c in to_nums(ciphertext) {
-        let c_col = ColumnVector::v_new(c);
-        let ciphertext_col = encryption_matrix * c_col;
-        for [e] in ciphertext_col.entries {
-            let pos = e.into();
+    for c in to_nums::<BLOCK_SIZE>(ciphertext) {
+        let c_col = ColumnVector::v_new(c.to_vec());
+        let ciphertext_col = encryption_matrix.clone() * c_col;
+        for e in ciphertext_col.rows().map(|mut r|r.next().expect("nonempty row")) {
+            let pos = (*e).into();
             chars.push(&ALPHABET[pos..=pos]);
         }
     }

@@ -1,4 +1,4 @@
-use anymap::{any::Any, Map};
+use anymap::{Map, any::Any};
 use rand::rng;
 use std::{
     collections::HashMap,
@@ -6,43 +6,43 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
-use crate::{augmented_matrix::AugmentedMatrix, matrix::Matrix};
+use crate::{
+    augmented_matrix::AugmentedMatrix,
+    matrix::{Matrix, RowReduction},
+};
 
 use super::*;
 
-pub struct Subspace<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize> {
-    vectors: [TVec; VECS],
-    _entry_t: PhantomData<TEntry>,
-}
-
-#[derive(Clone)]
-pub struct Basis<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> {
+pub struct Subspace<TEntry: Field, TVec: Vector<TEntry>> {
     vectors: Vec<TVec>,
     _entry_t: PhantomData<TEntry>,
 }
 
-impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize>
-    Subspace<TEntry, DIM, TVec, VECS>
-{
-    pub fn new(vectors: [TVec; VECS]) -> Self {
+#[derive(Clone)]
+pub struct Basis<TEntry: Field, TVec: Vector<TEntry>> {
+    vectors: Vec<TVec>,
+    _entry_t: PhantomData<TEntry>,
+}
+
+impl<TEntry: Field, TVec: Vector<TEntry>> Subspace<TEntry, TVec> {
+    pub fn new(vectors: Vec<TVec>) -> Self {
         Self {
             vectors,
             _entry_t: PhantomData,
         }
     }
 
-    pub fn basis(&self) -> Basis<TEntry, DIM, TVec> {
+    pub fn basis(&self) -> Basis<TEntry, TVec> {
         static CACHE: LazyLock<Mutex<Map<dyn Any + Send + Sync>>> =
             LazyLock::new(|| Mutex::new(Map::new()));
         if let Ok(mut cache) = CACHE.try_lock() {
-            let t_cache = if let Some(t_cache) =
-                cache.get_mut::<HashMap<[TVec; VECS], Basis<TEntry, DIM, TVec>>>()
-            {
-                t_cache
-            } else {
-                cache.insert(HashMap::<[TVec; VECS], Basis<TEntry, DIM, TVec>>::new());
-                cache.get_mut().unwrap()
-            };
+            let t_cache =
+                if let Some(t_cache) = cache.get_mut::<HashMap<Vec<TVec>, Basis<TEntry, TVec>>>() {
+                    t_cache
+                } else {
+                    cache.insert(HashMap::<Vec<TVec>, Basis<TEntry, TVec>>::new());
+                    cache.get_mut().unwrap()
+                };
             if let Some(cached) = t_cache.get(&self.vectors) {
                 return cached.clone();
             } else {
@@ -55,8 +55,9 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
         self.basis_raw()
     }
 
-    fn basis_raw(&self) -> Basis<TEntry, DIM, TVec> {
-        let mut m = Matrix::new_columns(self.vectors.clone().map(|v| v.to_column().as_array()));
+    fn basis_raw(&self) -> Basis<TEntry, TVec> {
+        let mut m =
+            UnsizedMatrix::new_columns(self.vectors.iter().map(|v| v.to_vec()).collect());
         m.reduce_to_ref();
         let mut basis = vec![];
         for pivot in m.pivots() {
@@ -78,8 +79,8 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
     }
 
     pub fn contains(&self, vec: TVec) -> bool {
-        let m = Matrix::new_columns(self.vectors.clone().map(|v| v.to_column().as_array()));
-        if let Some(aug) = AugmentedMatrix::new(m, vec.to_column()).solve() {
+        let m = UnsizedMatrix::new_columns(self.vectors.iter().map(|v| v.to_vec()).collect());
+        if let Some(aug) = AugmentedMatrix::new(m, UnsizedMatrix::v_new(vec.to_vec())).solve() {
             aug.consistent().unwrap()
         } else {
             false
@@ -87,7 +88,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usi
     }
 }
 
-impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, DIM, TVec> {
+impl<TEntry: Field, TVec: Vector<TEntry>> Basis<TEntry, TVec> {
     pub fn new(vectors: Vec<TVec>) -> Self {
         Self {
             vectors,
@@ -104,7 +105,7 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
     }
 
     pub fn sample(&self, basic: bool) -> TVec {
-        let mut res = TVec::vec_zero();
+        let mut res = TVec::vec_zero(self.vectors[0].dimension());
         let mut rng = rng();
         for v in &self.vectors {
             res = res + v.clone() * TEntry::generate(&mut rng, basic);
@@ -117,30 +118,26 @@ impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> Basis<TEntry, D
     where
         [(); Self::MAX_DIM]:,
     {
-        assert!(self.vectors.len() <= Self::MAX_DIM, "Can't operate on a basis of dimension greater than {:?}", Self::MAX_DIM);
-        let mut vectors: [TVec; Self::MAX_DIM] = array::from_fn(|_| TVec::vec_zero());
-        for (i, v) in self.vectors.iter().enumerate() {
-            vectors[i] = v.clone();
-        }
-        let b = Subspace::new(vectors);
+        assert!(
+            self.vectors.len() <= Self::MAX_DIM,
+            "Can't operate on a basis of dimension greater than {:?}",
+            Self::MAX_DIM
+        );
+        let b = Subspace::new(self.vectors.clone());
         b.contains(vec)
     }
 }
 
-impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>, const VECS: usize> std::fmt::Debug
-    for Subspace<TEntry, DIM, TVec, VECS>
-{
+impl<TEntry: Field, TVec: Vector<TEntry>> std::fmt::Debug for Subspace<TEntry, TVec> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", Basis::new(self.vectors.to_vec()))
     }
 }
 
-impl<TEntry: Field, const DIM: usize, TVec: Vector<TEntry, DIM>> std::fmt::Debug
-    for Basis<TEntry, DIM, TVec>
-{
+impl<TEntry: Field, TVec: Vector<TEntry>> std::fmt::Debug for Basis<TEntry, TVec> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let res: Vec<Vec<String>> = self.vectors.iter().map(|c| c.lines()).collect();
-        let lines = TVec::vec_zero().lines().len();
+        let lines = TVec::vec_zero(self.vectors[0].dimension()).lines().len();
         for l in 0..lines {
             write!(
                 f,

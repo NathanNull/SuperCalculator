@@ -1,24 +1,23 @@
-use std::{array, collections::HashMap};
-
 use crate::{
-    debug_multi::DebugMulti,
-    expression::{equation::Equation, function::Function},
-    matrix::Matrix,
-    ring_field::Ring,
+    debug_multi::DebugMulti, expression::{equation::Equation, function::Function}, matrix::{Matrix, RowReduction}, ring_field::Ring
 };
+use itertools::Itertools;
+use std::{collections::HashMap, marker::PhantomData, ops::Mul};
 
-pub struct AugmentedMatrix<TEntry: Ring, const R: usize, const CL: usize, const CR: usize> {
-    pub left_matrix: Matrix<TEntry, R, CL>,
-    pub right_matrix: Matrix<TEntry, R, CR>,
+pub struct AugmentedMatrix<TEntry: Ring, ML: Matrix<TEntry>, MR: Matrix<TEntry>> {
+    pub left_matrix: ML,
+    pub right_matrix: MR,
+    pd: PhantomData<TEntry>,
 }
 
-impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
-    AugmentedMatrix<TEntry, R, CL, CR>
+impl<TEntry: Ring, ML: Matrix<TEntry>, MR: Matrix<TEntry>> AugmentedMatrix<TEntry, ML, MR> where ML::Transpose: Mul<MR>
 {
-    pub fn new(left_matrix: Matrix<TEntry, R, CL>, right_matrix: Matrix<TEntry, R, CR>) -> Self {
+    pub fn new(left_matrix: ML, right_matrix: MR) -> Self {
+        assert_eq!(left_matrix.size().0, right_matrix.size().0, "wrong sizes");
         Self {
             left_matrix,
             right_matrix,
+            pd: PhantomData,
         }
     }
 
@@ -34,21 +33,25 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
 
     pub fn gen_parametric_form(
         &self,
-        l_names: [String; CL],
-        r_names: [String; CR],
-    ) -> Option<[Function<TEntry>; CL]> {
+        l_names: Vec<String>,
+        r_names: Vec<String>,
+    ) -> Option<Vec<Function<TEntry>>> {
         if !self.left_matrix.is_rref() {
             //println!("Not rref");
             return None;
         }
         let pivots = self.left_matrix.pivots();
-        let equations: [Equation<TEntry>; R] = array::from_fn(|row| {
-            let lhs = map_row_to_function(self.left_matrix.entries[row].clone(), l_names.clone());
-            let rhs = map_row_to_function(self.right_matrix.entries[row].clone(), r_names.clone());
-            Equation::new(lhs, rhs)
-        });
+        let equations = (0..self.left_matrix.size().0)
+            .map(|row| {
+                let lhs = map_row_to_function(self.left_matrix.row(row), l_names.clone());
+                let rhs = map_row_to_function(self.right_matrix.row(row), r_names.clone());
+                Equation::new(lhs, rhs)
+            })
+            .collect_vec();
 
-        let mut arr = array::from_fn(|i| Function::Variable(l_names[i].clone()));
+        let mut arr = (0..self.left_matrix.size().0)
+            .map(|i| Function::Variable(l_names[i].clone()))
+            .collect_vec();
         let mut map = HashMap::new();
         for (row, eq) in equations.into_iter().enumerate().rev() {
             if let Some(entry) = pivots.iter().find(|pos| pos.row == row).map(|pos| pos.col) {
@@ -81,13 +84,15 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
         if !self.left_matrix.is_rref() {
             return None;
         }
-        for row in 0..R {
-            if self.left_matrix.entries[row]
-                .iter()
+        for row in 0..self.left_matrix.size().0 {
+            if self
+                .left_matrix
+                .row(row)
                 .find(|v| v != &&TEntry::zero())
                 .is_none()
-                && self.right_matrix.entries[row]
-                    .iter()
+                && self
+                    .right_matrix
+                    .row(row)
                     .find(|v| v != &&TEntry::zero())
                     .is_some()
             {
@@ -98,12 +103,11 @@ impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize>
     }
 }
 
-fn map_row_to_function<TEntry: Ring, const L: usize>(
-    row: [TEntry; L],
-    names: [String; L],
+fn map_row_to_function<'a, TEntry: Ring>(
+    row: impl Iterator<Item = &'a TEntry>,
+    names: Vec<String>,
 ) -> Function<TEntry> {
-    row.iter()
-        .enumerate()
+    row.enumerate()
         .map(|(col, v)| {
             if *v == TEntry::zero() {
                 // the additive identity is a multiplicative absorbing element
@@ -125,8 +129,8 @@ fn map_row_to_function<TEntry: Ring, const L: usize>(
         .unwrap_or(Function::Constant(TEntry::zero()))
 }
 
-impl<TEntry: Ring, const R: usize, const CL: usize, const CR: usize> std::fmt::Debug
-    for AugmentedMatrix<TEntry, R, CL, CR>
+impl<TEntry: Ring, ML: Matrix<TEntry>, MR: Matrix<TEntry>> std::fmt::Debug
+    for AugmentedMatrix<TEntry, ML, MR>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fn rem_first_last(s: String) -> String {

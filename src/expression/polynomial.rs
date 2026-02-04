@@ -8,7 +8,6 @@ use std::{
 };
 
 use crate::{
-    matrix::ColumnVector,
     num::{
         rational::{gcf, Rational},
         real::Real,
@@ -444,19 +443,23 @@ impl<TEntry: Field, const DEGREE: usize> Mul<TEntry> for Polynomial<TEntry, DEGR
     }
 }
 
-impl<TEntry: Field, const DEGREE: usize> Vector<TEntry, DEGREE> for Polynomial<TEntry, DEGREE> {
-    fn to_column(&self) -> ColumnVector<TEntry, DEGREE> {
-        ColumnVector::v_new(self.entries.clone())
+impl<TEntry: Field, const DEGREE: usize> Vector<TEntry> for Polynomial<TEntry, DEGREE> {
+    fn to_vec(&self) -> Vec<TEntry>{
+        self.entries.clone().to_vec()
     }
 
-    fn vec_zero() -> Self {
+    fn vec_zero(_: usize) -> Self {
         Self::new(vec![])
     }
 
-    fn from_column(column: &ColumnVector<TEntry, DEGREE>) -> Self {
+    fn from_vec(column: Vec<TEntry>) -> Self {
         Self {
-            entries: column.entries.each_ref().map(|r| r[0].clone()),
+            entries: column.iter().cloned().collect_array().unwrap(),
         }
+    }
+    
+    fn dimension(&self) -> usize {
+        DEGREE
     }
 }
 
