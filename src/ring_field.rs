@@ -3,9 +3,12 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use rand::{rngs::ThreadRng, Rng};
+use rand::{Rng, rngs::ThreadRng};
 
-use crate::{repl::{Downcast, Op, Value, ValueType}, try_ops_trait};
+use crate::{
+    repl::{Downcast, Op, Value, ValueType},
+    try_ops_trait,
+};
 
 pub trait Convenient: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static {}
 impl<T: Clone + Eq + std::fmt::Debug + Sized + Send + Sync + Hash + 'static> Convenient for T {}
@@ -63,7 +66,26 @@ pub trait Sqrt {
     fn sqrt(&self) -> Self;
 }
 
-pub trait QuadraticClosure: Field + Sqrt {}
+pub trait QuadraticClosure: Field + Sqrt {
+    fn multival_sqrt(&self) -> [Self; 2] {
+        let s = self.sqrt();
+        // If s^2=self, then (-s)^2=(-1)^2*s^2=s^2=self
+        [s.clone(), s.negate()]
+    }
+    fn quadratic_formula([a, b, c]: [Self; 3]) -> [Self; 2] {
+        // This is cursed
+        let two = Self::one() + Self::one();
+        let four = two.clone() * two.clone();
+
+        // d = b^2 - 4ac
+        let discriminant = b.clone() * b.clone() - four * a.clone() * c;
+
+        // (-b (+/-)sqrt(d)) / 2a
+        discriminant
+            .multival_sqrt()
+            .map(move |d| (b.negate() + d) / (two.clone() * a.clone()))
+    }
+}
 impl<T: Field + Sqrt> QuadraticClosure for T {}
 
 impl Value for i32 {
@@ -76,7 +98,8 @@ impl Value for i32 {
         op: Op,
         rhs: Box<dyn Value>,
     ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        self.try_ring_ops(&*rhs, op).ok_or_else(|| "Invalid int op".into())
+        self.try_ring_ops(&*rhs, op)
+            .ok_or_else(|| "Invalid int op".into())
     }
 }
 
@@ -132,6 +155,6 @@ pub trait ExponentialRing: Ring {
 
 impl ExponentialRing for i32 {
     fn exp(self) -> Self {
-        (-1i32).pow(((self%2) + 2) as u32)
+        (-1i32).pow(((self % 2) + 2) as u32)
     }
 }

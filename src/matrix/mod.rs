@@ -1,7 +1,6 @@
 use std::{
     array,
     collections::HashMap,
-    error::Error,
     ops::{Add, Mul, Sub},
 };
 
@@ -12,9 +11,8 @@ use crate::{
     augmented_matrix::AugmentedMatrix,
     debug_multi::DebugMulti,
     expression::function::{Function, VARS},
-    repl::{Op, Value, ValueType},
+    repl::{Downcast, Op, Value, ValueType},
     ring_field::{Convenient, Field, Ring, RingOps},
-    try_ops_trait,
     vector_space::{
         Vector,
         subspace::{Basis, Subspace},
@@ -286,7 +284,7 @@ impl<TEntry: Ring> UnsizedMatrix<TEntry> {
     }
     pub fn new(entries: Vec<TEntry>, size: (usize, usize)) -> Self {
         (entries.len() == size.0 * size.1)
-            .then(|| Self::new(entries, size))
+            .then(|| Self { entries, size })
             .expect("Incorrect entries")
     }
 }
@@ -578,32 +576,6 @@ impl<TEntry: Ring> std::fmt::Debug for RefMatrix<'_, TEntry> {
     }
 }
 
-// Specialization gaming
-// Thanks I hate it
-
-try_ops_trait!(trait MatVecOp {
-    fn vec_op(&self, op: Op, rhs: &dyn Value) -> Result<Box<dyn Value>, Box<dyn Error>> {
-        if ([TEntry: Ring + Value]: Self = UnsizedMatrix<TEntry>,) {
-            |lhs, op, rhs| try_vector_ops::<TEntry, _>(lhs, rhs, op).ok_or_else(|| "Invalid matrix operation".into())
-        } else ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = SizedMatrix<TEntry, R, C>,) {
-            |_,_,_|Err("Invalid matrix operation".into())
-        }
-    }
-});
-try_ops_trait!(trait MatRingOp {
-    fn ring_op(
-        &self,
-        op: Op,
-        rhs: &dyn Value,
-    ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        if ([TEntry: Ring + Value]: Self = UnsizedMatrix<TEntry>,) {
-            |lhs: &Self, op, rhs|lhs.try_ring_ops(rhs, op).ok_or_else(|| "Invalid matrix operation".into())
-        } else ([TEntry: Ring + Value, const R: usize, const C: usize]: Self = SizedMatrix<TEntry, R, C>,) {
-            |_,_,_|Err("Invalid matrix operation".into())
-        }
-    }
-});
-
 impl<TEntry: Ring + Value> Value for UnsizedMatrix<TEntry> {
     fn get_type(&self) -> ValueType {
         let size = self.size();
@@ -615,12 +587,17 @@ impl<TEntry: Ring + Value> Value for UnsizedMatrix<TEntry> {
         op: Op,
         rhs: Box<dyn Value>,
     ) -> Result<Box<dyn Value>, Box<dyn std::error::Error>> {
-        let entry_t = TEntry::zero().get_type();
-        if let ValueType::Matrix(rty, _, _) = rhs.get_type()
-            && *rty == entry_t
+        if op == Op::Mul
+            && let ValueType::Matrix(rentry, rr, _) = rhs.get_type()
+            && let ValueType::Matrix(lentry, _, lc) = self.get_type()
+            && rentry == lentry
+            && lc == rr
+            && let Some(res) = rhs.downcast::<UnsizedMatrix<TEntry>>()
         {
-            return self.ring_op(op, &*rhs);
+            return Ok(Box::new(self.clone() * res.clone()));
         }
-        self.ring_op(op, &*rhs).or_else(|_| self.vec_op(op, &*rhs))
+        self.try_ring_ops(&*rhs, op)
+            .or_else(|| try_vector_ops::<TEntry, _>(self, &*rhs, op))
+            .ok_or_else(|| "Invalid matrix operation".into())
     }
 }

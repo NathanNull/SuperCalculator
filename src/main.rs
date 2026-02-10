@@ -1,24 +1,7 @@
 #![feature(generic_const_exprs, iter_array_chunks, specialization)]
 #![allow(incomplete_features)]
 
-#[allow(unused)]
-use crate::{
-    augmented_matrix::AugmentedMatrix,
-    expression::{
-        function::Function,
-        polynomial::{Polynomial, UnsizedPolynomial},
-    },
-    matrix::Matrix,
-    num::constructible::Constructible,
-    num::{rational::Rational, real::Real},
-    repl::Repl,
-    ring_field::Sqrt,
-    ring_field::TrueDiv as _,
-    vector_space::Cross as _,
-    vector_space::Vector as _,
-};
-#[allow(unused)]
-use examples::Examples;
+use crate::repl::Repl;
 use std::error::Error;
 
 mod applications;

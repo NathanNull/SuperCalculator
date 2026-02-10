@@ -581,6 +581,7 @@ impl<TEntry: Ring> Ring for UnsizedPolynomial<TEntry> {
 
     fn generate(_rng: &mut rand::prelude::ThreadRng, _basic: bool) -> Self {
         todo!("generation for unsized polynomials not implemented")
+        // probably just generate up to some small degree (quadratic or cubic is probably good)
     }
 }
 

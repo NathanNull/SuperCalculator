@@ -1,6 +1,13 @@
-Make an unsized, owned matrix type (ideally using a single Vec) and rename the existing one to RefMatrix or something. Make repl parse that type
--> optional: change a bunch of datatypes to be dynamic size, with const-sized wrapper types in place of their originals (Vector is potentially a good example of this)
+Optional: convert static-size types to dynamic ones, with static-size wrapper traits (Vector is potentially a good example of this)
+Having a fixed-degree polynomial type is probably a good idea.
+
+Test the examples to make sure everything still works after the switch to unsized matrices
+Go through the files and make sure no code is still assuming things are fixed-size (polynomial may be a culprit here, not sure)
+
+This codebase really needs some comments
+
+Repl features:
 Functions (prob not user-defined ones tho)
-Operator precedence
+Operator precedence (perhaps)
 Go through and make a list of all the types and operations I want to include in the repl, and make a proper grammar for the thing
 Add some documentation, otherwise nobody is going to understand this thing

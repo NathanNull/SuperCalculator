@@ -10,7 +10,6 @@ use parce::parser::{
     recursive::p_recursive,
     stringbased::{p_alnum, p_n, p_regex},
 };
-use seq_macro::seq;
 
 type LockedParser<Out> = LazyLock<Arc<dyn Parser<str, Out = Out>>>;
 
@@ -83,9 +82,9 @@ static P_VAL: LockedParser<(Box<dyn Value>,)> = LazyLock::new(|| {
     );
     let p_mat_inner =
         parser!((!'[') & (WHITESPACE.clone()) & (p_arr_many) & (WHITESPACE.clone()) & (!']'));
-    let p_mat = p_mat_inner.try_map(|vals: Vec<Vec<Box<dyn Value>>>|{
+    let p_mat = p_mat_inner.try_map(|vals: Vec<Vec<Box<dyn Value>>>| {
         let rows = vals.len();
-        let cols = vals.first().map(|r|r.len()).unwrap_or_default();
+        let cols = vals.first().map(|r| r.len()).unwrap_or_default();
         let mut entry = None;
         for row in &vals {
             if row.len() != cols {
@@ -93,41 +92,40 @@ static P_VAL: LockedParser<(Box<dyn Value>,)> = LazyLock::new(|| {
             }
             for val in row {
                 let ty = val.get_type();
-                if entry.is_some_and(|e|e != ty) {
+                if entry.is_some_and(|e| e != ty) {
                     return None;
                 }
                 entry = Some(ty);
             }
         }
 
-        // This is awful
-        // I really need an owned unsized matrix type
-        // TODO: do that
-        seq!(R in 1..=3 {
-            seq!(C in 1..=3 {
-                if rows == R && cols == C {
-                    return match entry {
-                        Some(ValueType::Integer) | None => {
-                            Some(UnsizedMatrix::<i32>::fill_size(|r,c|*vals[r][c].downcast::<i32>().unwrap(), (R,C)).box_clone())
-                        }
-                        Some(ValueType::Real) => {
-                            Some(UnsizedMatrix::<Real>::fill_size(|r,c|*vals[r][c].downcast::<Real>().unwrap(), (R,C)).box_clone())
-                        }
-                        Some(ValueType::Rational) => {
-                            Some(UnsizedMatrix::<Rational>::fill_size(|r,c|*vals[r][c].downcast::<Rational>().unwrap(), (R,C)).box_clone())
-                        }
-                        _ => {
-                            None
-                        }
-                    }
-                }
-            });
-        });
-
-        None
+        match entry {
+            Some(ValueType::Integer) | None => Some(
+                UnsizedMatrix::<i32>::fill_size(
+                    |r, c| *vals[r][c].downcast::<i32>().unwrap(),
+                    (rows, cols),
+                )
+                .box_clone(),
+            ),
+            Some(ValueType::Real) => Some(
+                UnsizedMatrix::<Real>::fill_size(
+                    |r, c| *vals[r][c].downcast::<Real>().unwrap(),
+                    (rows, cols),
+                )
+                .box_clone(),
+            ),
+            Some(ValueType::Rational) => Some(
+                UnsizedMatrix::<Rational>::fill_size(
+                    |r, c| *vals[r][c].downcast::<Rational>().unwrap(),
+                    (rows, cols),
+                )
+                .box_clone(),
+            ),
+            _ => None,
+        }
     });
 
-    parser!(p_mat | p_num).box_clone()
+    parser!(p_mat | p_num).map(|a| a).box_clone()
 });
 
 static P_EXPR: LockedParser<(Expression,)> = LazyLock::new(|| {
@@ -144,8 +142,17 @@ static P_EXPR: LockedParser<(Expression,)> = LazyLock::new(|| {
     .reduce(|a, b| a.or(b).box_clone())
     .expect("There is at least one operation");
     p_recursive::<str, (Expression,), _>(|p| {
-        let p_lhs =
-            parser!((P_VAL.clone().map(Expression::Value)) | (p_alnum().map(Expression::Variable)));
+        let p_func = parser!(
+            ((p_alnum())
+                & (WHITESPACE.clone())
+                & (!'(')
+                & (p.clone().sep_by(WHITESPACE.clone().and(',').and(WHITESPACE.clone()), ..))
+                & (WHITESPACE.clone())
+                & (!')')) >> |(n,s)| Expression::Function(n,s)
+        );
+        let p_lhs = parser!(
+            p_func | (P_VAL.clone().map(Expression::Value)) | (p_alnum().map(Expression::Variable))
+        );
         let rhs = WHITESPACE
             .clone()
             .and(p_op)
@@ -198,6 +205,7 @@ pub enum Expression {
     Value(Box<dyn Value>),
     Variable(Arc<str>),
     Binop(Box<Expression>, Op, Box<Expression>),
+    Function(Arc<str>, Vec<Expression>),
 }
 
 #[derive(Debug, Clone)]

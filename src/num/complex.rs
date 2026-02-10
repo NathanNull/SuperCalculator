@@ -6,7 +6,7 @@ use std::{
 use crate::{
     num::real::Real,
     repl::{Value, ValueType},
-    ring_field::{ExponentialRing, Field, FieldOps, Ring, TrueDiv},
+    ring_field::{ExponentialRing, Field, FieldOps, Ring, Sqrt, TrueDiv},
     vector_space::Vector,
 };
 
@@ -22,6 +22,23 @@ impl Complex {
             real: self.real,
             imag: -self.imag,
         }
+    }
+
+    pub fn argument(&self) -> Real {
+        Real(f64::atan2(self.imag.0, self.real.0))
+    }
+
+    const I: Self = Self {
+        real: Real(0.),
+        imag: Real(1.),
+    };
+
+    pub fn exponential_form(&self) -> (Real, Real) {
+        (self.magnitude(), self.argument())
+    }
+
+    pub fn from_exponential_form(modulus: Real, argument: Real) -> Self {
+        (Self::I * argument).exp() * modulus
     }
 }
 
@@ -151,6 +168,14 @@ impl Vector<Real> for Complex {
 
     fn dimension(&self) -> usize {
         2
+    }
+}
+
+impl Sqrt for Complex {
+    fn sqrt(&self) -> Self {
+        let (modulus, argument) = self.exponential_form();
+        // sqrt(re^it) = sqrt(r)e^i(t/2)
+        Self::from_exponential_form(modulus.sqrt(), argument / Real(2.))
     }
 }
 
